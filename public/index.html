@@ -1,195 +1,1649 @@
 <!DOCTYPE html>
-<html lang='en' class='dark'>
+<html lang="en" class="dark scroll-smooth">
 <head>
-    <meta charset='UTF-8'>
-    <meta name='viewport' content='width=device-width, initial-scale=1.0'>
-    <title>Pristine | AI Watermark Removal</title>
-    <script src='https://cdn.tailwindcss.com'></script>
-    <link rel='stylesheet' href='https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css'>
-    <link href='https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Syne:wght@700;800&display=swap' rel='stylesheet'>
-    <style>
-        :root { --accent: #00d4ff; --bg: #020408; }
-        body { background-color: var(--bg); color: #f8fafc; font-family: 'Inter', sans-serif; overflow-x: hidden; }
-        .font-syne { font-family: 'Syne', sans-serif; }
-        .glass { background: rgba(255, 255, 255, 0.02); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        .text-glow { text-shadow: 0 0 20px rgba(0, 212, 255, 0.5); }
-        .bg-glow { background: radial-gradient(circle at center, rgba(0, 212, 255, 0.15) 0%, transparent 70%); }
-        .drop-zone { transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1); border: 2px dashed rgba(255, 255, 255, 0.1); }
-        .drop-zone.drag-over { border-color: var(--accent); background: rgba(0, 212, 255, 0.05); transform: scale(1.02); }
-        .btn-gradient { background: linear-gradient(135deg, #00d4ff 0%, #0072ff 100%); transition: all 0.3s; }
-        .btn-gradient:hover { box-shadow: 0 0 25px rgba(0, 212, 255, 0.4); transform: translateY(-2px); }
-        @keyframes pulse-subtle { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
-        .animate-pulse-subtle { animation: pulse-subtle 2s infinite; }
-    </style>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pristine — Gemini Watermark Remover</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"/>
+<!-- Tailwind config MUST be set before the CDN script loads -->
+<script>
+  window.tailwind = window.tailwind || {};
+  window.tailwindConfig = {
+    darkMode: 'class',
+    theme: {
+      extend: {
+        fontFamily: { display: ['Syne','sans-serif'], body: ['DM Sans','sans-serif'] },
+        colors: {
+          void: '#04050a',
+          ink: '#080c14',
+          cyan: { brand: '#00d4ff', glow: '#00b8e6' },
+          gold: { brand: '#f5c842', muted: '#c4a030' },
+        },
+      }
+    }
+  };
+</script>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  // Apply config after CDN loads - tailwind object is now available
+  tailwind.config = window.tailwindConfig;
+</script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  :root {
+    --cyan: #00d4ff;
+    --gold: #f5c842;
+    --bg-dark: #04050a;
+    --bg-card: rgba(255,255,255,0.03);
+    --border-subtle: rgba(255,255,255,0.07);
+    --border-glow: rgba(0,212,255,0.35);
+  }
+  .light {
+    --bg-dark: #f0f4f8;
+    --bg-card: rgba(0,0,0,0.03);
+    --border-subtle: rgba(0,0,0,0.08);
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg-dark);
+    color: #e2e8f0;
+    overflow-x: hidden;
+  }
+  .light body, .light { background: #f0f4f8; color: #1a202c; }
+
+  /* Grid background texture */
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  /* Noise overlay */
+  .noise::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.35;
+  }
+
+  /* Glassmorphism */
+  .glass {
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(20px) saturate(1.5);
+    -webkit-backdrop-filter: blur(20px) saturate(1.5);
+    border: 1px solid var(--border-subtle);
+  }
+  .light .glass {
+    background: rgba(255,255,255,0.7);
+    border: 1px solid rgba(0,0,0,0.1);
+  }
+
+  /* Gradient text */
+  .text-gradient {
+    background: linear-gradient(135deg, #ffffff 0%, var(--cyan) 50%, var(--gold) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .text-gradient-cyan {
+    background: linear-gradient(135deg, var(--cyan), #7dd3fc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Glow effects */
+  .glow-cyan { box-shadow: 0 0 30px rgba(0,212,255,0.2), 0 0 60px rgba(0,212,255,0.07); }
+  .glow-gold { box-shadow: 0 0 30px rgba(245,200,66,0.2), 0 0 60px rgba(245,200,66,0.07); }
+  .hover-lift { transition: transform 0.25s ease, box-shadow 0.25s ease; }
+  .hover-lift:hover { transform: translateY(-4px); }
+
+  /* Primary button */
+  .btn-primary {
+    background: linear-gradient(135deg, var(--cyan), #0099cc);
+    color: #000;
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .btn-primary::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg, rgba(255,255,255,0.2), transparent);
+    opacity: 0;
+    transition: opacity 0.2s;
+  }
+  .btn-primary:hover::before { opacity: 1; }
+  .btn-primary:hover { box-shadow: 0 0 25px rgba(0,212,255,0.5); transform: translateY(-1px); }
+
+  /* Ghost button */
+  .btn-ghost {
+    border: 1px solid var(--border-subtle);
+    color: #94a3b8;
+    font-family: 'Syne', sans-serif;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  .btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); background: rgba(0,212,255,0.06); }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 2px dashed rgba(0,212,255,0.25);
+    transition: all 0.3s ease;
+    position: relative;
+  }
+  .drop-zone.drag-over {
+    border-color: var(--cyan);
+    background: rgba(0,212,255,0.05);
+    box-shadow: 0 0 40px rgba(0,212,255,0.2), inset 0 0 40px rgba(0,212,255,0.05);
+  }
+  .drop-zone::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(135deg, transparent, rgba(0,212,255,0.1), transparent);
+    pointer-events: none;
+  }
+
+  /* Comparison slider */
+  .comparison-container {
+    position: relative;
+    overflow: hidden;
+    user-select: none;
+    cursor: col-resize;
+    border-radius: 16px;
+  }
+  .comparison-after {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  .comparison-handle {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: white;
+    cursor: col-resize;
+    z-index: 10;
+    box-shadow: 0 0 20px rgba(255,255,255,0.5);
+  }
+  .comparison-handle::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    background: white;
+    border-radius: 50%;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .handle-arrows {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 11;
+    color: #1a202c;
+    font-size: 16px;
+    pointer-events: none;
+  }
+  .comparison-label {
+    position: absolute;
+    bottom: 16px;
+    background: rgba(0,0,0,0.75);
+    color: white;
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 4px 12px;
+    border-radius: 99px;
+    backdrop-filter: blur(8px);
+    text-transform: uppercase;
+  }
+
+  /* Feature cards */
+  .feature-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-subtle);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+  }
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(0,212,255,0.07) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+  .feature-card:hover::before { opacity: 1; }
+  .feature-card:hover {
+    border-color: rgba(0,212,255,0.3);
+    transform: translateY(-6px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.3), 0 0 30px rgba(0,212,255,0.08);
+  }
+  .light .feature-card { background: rgba(255,255,255,0.8); border-color: rgba(0,0,0,0.07); }
+  .light .feature-card:hover { box-shadow: 0 20px 60px rgba(0,0,0,0.1), 0 0 30px rgba(0,212,255,0.12); }
+
+  /* Icon wrapper */
+  .icon-wrap {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+
+  /* FAQ accordion */
+  .faq-answer {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.4s cubic-bezier(0.4,0,0.2,1), padding 0.3s ease;
+  }
+  .faq-answer.open { max-height: 300px; }
+  .faq-item { border-bottom: 1px solid var(--border-subtle); }
+  .faq-icon { transition: transform 0.3s ease; }
+  .faq-item.open .faq-icon { transform: rotate(45deg); }
+
+  /* Step connector */
+  .step-line {
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, rgba(0,212,255,0.5), rgba(245,200,66,0.2));
+    margin: 0 12px;
+    margin-bottom: 52px;
+  }
+
+  /* Navbar */
+  .nav-link {
+    color: #94a3b8;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    transition: color 0.2s;
+    position: relative;
+  }
+  .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: -4px; left: 0; right: 0;
+    height: 1px;
+    background: var(--cyan);
+    transform: scaleX(0);
+    transition: transform 0.2s;
+    transform-origin: left;
+  }
+  .nav-link:hover { color: #e2e8f0; }
+  .nav-link:hover::after { transform: scaleX(1); }
+  .light .nav-link { color: #475569; }
+  .light .nav-link:hover { color: #0f172a; }
+
+  /* Badge pill */
+  .badge {
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 6px 16px;
+    border-radius: 99px;
+    border: 1px solid;
+    transition: all 0.2s;
+  }
+  .badge:hover { transform: translateY(-2px); }
+
+  /* Scroll fade-in animation */
+  .reveal {
+    opacity: 0;
+    transform: translateY(30px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* Mobile menu */
+  #mobile-menu {
+    display: none;
+    transition: all 0.3s ease;
+  }
+  #mobile-menu.open { display: block; }
+
+  /* Ambient orbs */
+  .orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(120px);
+    pointer-events: none;
+  }
+
+  /* Light mode overrides */
+  .light .text-slate-400 { color: #64748b; }
+  .light .text-slate-300 { color: #475569; }
+  .light .text-slate-500 { color: #94a3b8; }
+  .light body { color: #1a202c; }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: #04050a; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,212,255,0.3); border-radius: 99px; }
+  ::-webkit-scrollbar-thumb:hover { background: rgba(0,212,255,0.5); }
+
+  /* Result cards */
+  .result-card {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 16px;
+    overflow: hidden;
+    transition: all 0.25s ease;
+  }
+  .result-card:hover { border-color: rgba(0,212,255,0.25); transform: translateY(-3px); box-shadow: 0 12px 40px rgba(0,0,0,0.3); }
+  .result-card img { width:100%; aspect-ratio:16/10; object-fit:cover; display:block; }
+  .result-card .card-body { padding: 12px 14px; display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .result-card .card-name { font-size:12px; color:#94a3b8; font-family:'Syne',sans-serif; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:160px; }
+  .result-card .card-badge { font-size:10px; font-family:'Syne',sans-serif; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; padding:3px 8px; border-radius:99px; flex-shrink:0; }
+  .result-card .badge-ok { background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); }
+  .result-card .badge-skip { background:rgba(245,158,11,0.1); color:#fbbf24; border:1px solid rgba(245,158,11,0.25); }
+  .result-card .dl-btn { font-size:11px; background:linear-gradient(135deg,#00d4ff,#0099cc); color:#000; font-family:'Syne',sans-serif; font-weight:700; padding:5px 12px; border-radius:8px; cursor:pointer; border:none; transition:all 0.2s; flex-shrink:0; }
+  .result-card .dl-btn:hover { box-shadow:0 0 14px rgba(0,212,255,0.5); }
+  .result-card.processing { opacity:0.6; }
+  .result-card .spinner-overlay { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(4,5,10,0.6); backdrop-filter:blur(4px); }
+  .result-card { position:relative; }
+</style>
 </head>
-<body class='min-h-screen flex flex-col bg-glow'>
-    <nav class='p-6 flex justify-between items-center max-w-7xl mx-auto w-full'>
-        <div class='flex items-center gap-2'>
-            <div class='w-8 h-8 bg-cyan-500 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(6,182,212,0.5)]'>
-                <i class='fa-solid fa-wand-sparkles text-black text-sm'></i>
-            </div>
-            <span class='font-syne text-2xl tracking-tighter'>Pristine</span>
+<body class="dark grid-bg noise min-h-screen">
+
+<!-- ═══════════════════════════════════════════════════════════
+     HEADER / NAVBAR
+═══════════════════════════════════════════════════════════ -->
+<header id="navbar" class="fixed top-0 left-0 right-0 z-50 glass transition-all duration-300">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex items-center justify-between h-16 gap-4">
+
+      <!-- Logo -->
+      <a href="#" class="flex items-center gap-2 flex-shrink-0">
+        <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center flex-shrink-0 glow-cyan">
+          <i class="fa-solid fa-wand-magic-sparkles text-black text-xs"></i>
         </div>
-        <div id='status-indicator' class='flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] font-bold uppercase tracking-widest text-red-400'>
-            <span class='w-1.5 h-1.5 rounded-full bg-red-400 animate-pulse'></span> Offline
+        <span class="font-display font-800 text-xl text-gradient tracking-tight">Pristine</span>
+      </a>
+
+      <!-- Desktop Nav -->
+      <nav class="hidden md:flex items-center gap-8">
+        <a href="#features" class="nav-link">AI Tools</a>
+        <a href="#pricing" class="nav-link">Pricing</a>
+        <a href="#api" class="nav-link">API</a>
+        <a href="#faq" class="nav-link">Docs</a>
+      </nav>
+
+      <!-- Right Controls -->
+      <div class="hidden md:flex items-center gap-3">
+        <!-- Dark mode toggle -->
+        <button id="theme-toggle" class="w-9 h-9 rounded-xl glass flex items-center justify-center text-slate-400 hover:text-cyan-400 transition-all hover:border-cyan-500/30 hover-lift" aria-label="Toggle dark mode">
+          <i class="fa-solid fa-moon text-sm" id="theme-icon"></i>
+        </button>
+        <button onclick="document.getElementById('drop-zone').scrollIntoView({behavior:'smooth'})" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2">
+          <i class="fa-solid fa-arrow-up-from-bracket text-xs"></i> Choose Files
+        </button>
+      </div>
+
+      <!-- Mobile hamburger -->
+      <button id="hamburger" class="md:hidden w-9 h-9 glass rounded-xl flex flex-col items-center justify-center gap-1.5 p-2.5">
+        <span class="w-full h-px bg-slate-400 transition-all" id="ham-1"></span>
+        <span class="w-full h-px bg-slate-400 transition-all" id="ham-2"></span>
+        <span class="w-3/4 h-px bg-slate-400 self-end transition-all" id="ham-3"></span>
+      </button>
+    </div>
+
+    <!-- Mobile Menu -->
+    <div id="mobile-menu" class="pb-4">
+      <nav class="flex flex-col gap-1 py-2 border-t border-white/5">
+        <a href="#features" class="nav-link py-3 px-2 border-b border-white/5">AI Tools</a>
+        <a href="#pricing" class="nav-link py-3 px-2 border-b border-white/5">Pricing</a>
+        <a href="#api" class="nav-link py-3 px-2 border-b border-white/5">API</a>
+        <a href="#faq" class="nav-link py-3 px-2">Docs</a>
+      </nav>
+      <div class="flex gap-3 pt-3">
+        <button onclick="document.getElementById('drop-zone').scrollIntoView({behavior:'smooth'})" class="btn-primary flex-1 py-2.5 rounded-xl text-sm text-center">Choose Files</button>
+        <button id="theme-toggle-mobile" class="w-11 glass rounded-xl flex items-center justify-center text-slate-400">
+          <i class="fa-solid fa-moon text-sm" id="theme-icon-mobile"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════
+     HERO SECTION
+═══════════════════════════════════════════════════════════ -->
+<section class="relative pt-32 pb-20 px-4 overflow-hidden">
+  <!-- Ambient orbs -->
+  <div class="orb w-96 h-96 bg-cyan-500/10 top-20 -left-32 z-0"></div>
+  <div class="orb w-80 h-80 bg-yellow-400/8 top-40 -right-20 z-0"></div>
+  <div class="orb w-64 h-64 bg-blue-600/10 bottom-0 left-1/3 z-0"></div>
+
+  <div class="max-w-4xl mx-auto text-center relative z-10">
+    <!-- Eyebrow -->
+    <div class="reveal visible">
+      <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
+      <span class="text-xs font-display font-600 text-cyan-400 tracking-widest uppercase">Browser-native · Zero uploads · Instant</span>
+    </div>
+
+    <!-- Title -->
+    <h1 class="reveal visible" style="animation-delay:0.1s; font-size: clamp(2.8rem, 7vw, 5rem);">
+      Remove Gemini Watermarks<br/>
+      <span class="text-gradient">Instantly.</span>
+    </h1>
+
+    <!-- Subtitle -->
+    <p class="reveal visible" style="animation-delay:0.2s;">
+      Pure browser-based local processing — <span class="text-slate-300">zero data leaves your device.</span> Fast, flawless, and completely free.
+    </p>
+
+    <!-- Badges -->
+    <div class="reveal visible" style="animation-delay:0.3s;">
+      <span class="badge text-cyan-400 border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/10">
+        <i class="fa-solid fa-check mr-1.5"></i>Free Tool
+      </span>
+      <span class="badge text-yellow-400 border-yellow-500/30 bg-yellow-500/5 hover:bg-yellow-500/10">
+        <i class="fa-brands fa-google mr-1.5"></i>Gemini Optimized
+      </span>
+      <span class="badge text-violet-400 border-violet-500/30 bg-violet-500/5 hover:bg-violet-500/10">
+        <i class="fa-solid fa-layer-group mr-1.5"></i>Batch Ready
+      </span>
+      <span class="badge text-emerald-400 border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500/10">
+        <i class="fa-brands fa-github mr-1.5"></i>Open-Source Core
+      </span>
+    </div>
+
+    <!-- Drop Zone -->
+    <div
+      id="drop-zone"
+      class="reveal visible"
+      style="animation-delay:0.4s; background: rgba(0,212,255,0.02);"
+    >
+      <!-- Corner decorations -->
+      <span class="absolute top-3 left-3 w-4 h-4 border-t-2 border-l-2 border-cyan-500/40 rounded-tl"></span>
+      <span class="absolute top-3 right-3 w-4 h-4 border-t-2 border-r-2 border-cyan-500/40 rounded-tr"></span>
+      <span class="absolute bottom-3 left-3 w-4 h-4 border-b-2 border-l-2 border-cyan-500/40 rounded-bl"></span>
+      <span class="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-cyan-500/40 rounded-br"></span>
+
+      <div class="flex flex-col items-center gap-5">
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/10 border border-cyan-500/20 flex items-center justify-center glow-cyan transition-all duration-300" id="drop-icon">
+          <i class="fa-solid fa-cloud-arrow-up text-3xl text-cyan-400"></i>
         </div>
-    </nav>
-
-    <main class='flex-grow flex flex-col items-center justify-center px-4 py-12'>
-        <div class='max-w-3xl w-full text-center'>
-            <h1 class='font-syne text-5xl md:text-7xl mb-6 tracking-tight leading-none'>
-                Clarity for the <span class='text-cyan-400 text-glow italic'>AI Era</span>
-            </h1>
-            <p class='text-slate-400 text-lg md:text-xl mb-12 max-w-xl mx-auto font-light leading-relaxed'>
-                High-fidelity watermark removal for Gemini images. <br class='hidden md:block'> 
-                <span class='text-white font-semibold'>100% Local. 100% Private.</span>
-            </p>
-
-            <!-- Upload Area -->
-            <div id='drop-zone' class='glass rounded-[2rem] p-12 md:p-20 mb-8 cursor-pointer relative group' onclick='document.getElementById("file-input").click()'>
-                <input type='file' id='file-input' class='hidden' accept='image/*'>
-                <div class='relative z-10'>
-                    <div class='w-20 h-20 bg-white/5 rounded-3xl flex items-center justify-center mx-auto mb-8 group-hover:bg-cyan-500/10 transition-colors'>
-                        <i class='fa-solid fa-cloud-arrow-up text-3xl text-slate-500 group-hover:text-cyan-400 transition-colors'></i>
-                    </div>
-                    <h3 class='text-2xl font-semibold mb-2'>Click or Drop Image</h3>
-                    <p class='text-slate-500'>Supports Ultra HD PNG, JPG, & WEBP</p>
-                </div>
-            </div>
-
-            <!-- Loading State -->
-            <div id='loading-state' class='hidden w-full max-w-md mx-auto'>
-                <div class='glass rounded-2xl p-6 mb-8'>
-                    <div class='flex justify-between items-center mb-4'>
-                        <span class='text-sm font-semibold text-cyan-400 uppercase tracking-widest'>Processing Image</span>
-                        <span id='progress-text' class='text-sm font-bold'>0%</span>
-                    </div>
-                    <div class='h-1.5 w-full bg-white/5 rounded-full overflow-hidden'>
-                        <div id='progress-bar' class='h-full btn-gradient w-0 transition-all duration-500'></div>
-                    </div>
-                    <p class='text-xs text-slate-500 mt-4 italic animate-pulse-subtle'>Applying reverse alpha compositing...</p>
-                </div>
-            </div>
-
-            <!-- Result Section -->
-            <div id='result-section' class='hidden animate-in fade-in zoom-in duration-500'>
-                <div class='glass rounded-[2rem] overflow-hidden mb-8 relative group'>
-                    <div class='absolute top-4 left-4 z-20 px-3 py-1 bg-black/50 backdrop-blur-md rounded-full text-[10px] font-bold uppercase tracking-wider text-cyan-400 border border-cyan-400/30'>
-                        Cleaned Result
-                    </div>
-                    <img id='result-image' class='w-full h-auto' src='' alt='Cleaned result'>
-                </div>
-                <div class='flex flex-col md:flex-row gap-4'>
-                    <button onclick='resetApp()' class='flex-1 py-4 glass rounded-2xl font-bold hover:bg-white/5 transition-all'>
-                        <i class='fa-solid fa-arrow-left mr-2'></i> Upload Another
-                    </button>
-                    <a id='download-link' href='#' download='pristine_clean.png' class='flex-[2] py-4 btn-gradient rounded-2xl font-bold text-black flex items-center justify-center gap-2'>
-                        <i class='fa-solid fa-download'></i> Download High-Res
-                    </a>
-                </div>
-            </div>
+        <div class="text-center">
+          <p class="font-display font-700 text-white text-lg mb-1" id="drop-text">Drag &amp; drop your Gemini images here</p>
+          <p class="text-slate-500 text-sm">Supports PNG, JPG, WEBP — up to 100 files at once</p>
         </div>
-    </main>
+        <div class="flex items-center gap-4">
+          <div class="h-px w-16 bg-white/10"></div>
+          <span class="text-slate-600 text-xs font-display uppercase tracking-widest">or</span>
+          <div class="h-px w-16 bg-white/10"></div>
+        </div>
+        <label class="btn-primary px-8 py-3 rounded-xl text-sm cursor-pointer flex items-center gap-2">
+          <i class="fa-solid fa-folder-open text-xs"></i>
+          Choose Files
+          <input type="file" class="hidden" multiple accept="image/png,image/jpeg,image/webp" id="file-input"/>
+        </label>
+        <p class="text-slate-600 text-xs">Local processing only · No server upload · No account required</p>
+      </div>
+    </div>
 
-    <footer class='p-8 text-center border-t border-white/5'>
-        <p class='text-slate-600 text-xs tracking-widest uppercase'>
-            Pristine Engine v1.0 • Privacy Guaranteed • No Data Retention
-        </p>
-    </footer>
+    <!-- Processing status bar (hidden until files chosen) -->
+    <div id="status-bar" class="hidden mt-4 glass rounded-xl px-5 py-3 flex items-center gap-3">
+      <div id="status-spinner" class="w-4 h-4 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin flex-shrink-0"></div>
+      <span id="status-text" class="text-sm text-slate-300 font-display"></span>
+      <div class="flex-1 h-1 bg-white/5 rounded-full overflow-hidden ml-2">
+        <div id="status-progress" class="h-full bg-gradient-to-r from-cyan-400 to-blue-500 rounded-full transition-all duration-300" style="width:0%"></div>
+      </div>
+      <span id="status-pct" class="text-xs text-cyan-400 font-display font-700 flex-shrink-0">0%</span>
+    </div>
 
-    <script>
-        const dropZone = document.getElementById('drop-zone');
-        const fileInput = document.getElementById('file-input');
-        const loadingState = document.getElementById('loading-state');
-        const resultSection = document.getElementById('result-section');
-        const progressBar = document.getElementById('progress-bar');
-        const progressText = document.getElementById('progress-text');
-        const statusIndicator = document.getElementById('status-indicator');
+    <!-- Settings / Adjustments (NEW) -->
+    <div id="settings-card" class="reveal visible">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+        <div class="flex-1">
+          <h3 class="font-display font-700 text-white text-lg mb-1 flex items-center gap-2">
+            <i class="fa-solid fa-sliders text-cyan-400"></i> Removal Fine-Tuning
+          </h3>
+          <p class="text-slate-400 text-sm">Adjust the alpha intensity if you see artifacts (ghosting or bright spots).</p>
+          <div class="mt-2 flex gap-4 text-[10px] font-display font-600 uppercase tracking-widest">
+            <span class="text-amber-500/80"><i class="fa-solid fa-triangle-exclamation mr-1"></i> JPEG artifacts may require higher strength</span>
+            <span class="text-slate-500"><i class="fa-solid fa-eye-slash mr-1"></i> SynthID (Invisible) remains embedded</span>
+          </div>
+          </div>
 
-        // Check Health
-        async function checkHealth() {
-            try {
-                const res = await fetch('/api/health');
-                if (res.ok) {
-                    statusIndicator.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Online';
-                    statusIndicator.className = 'flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-widest text-emerald-400';
-                }
-            } catch (e) {
-                statusIndicator.innerHTML = '<span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> Offline';
-                statusIndicator.className = 'flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-[10px] font-bold uppercase tracking-widest text-red-400';
-            }
+        <div class="flex items-center gap-4 w-full md:w-auto">
+          <span class="text-xs font-display font-700 text-slate-500 uppercase tracking-wider">Strength</span>
+          <input type="range" id="alpha-slider" min="0" max="100" value="48" class="flex-1 md:w-48 accent-cyan-400 h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer">
+          <span id="alpha-val" class="w-10 text-center font-display font-800 text-cyan-400">0.48</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results grid (hidden until processed) -->
+    <div id="results-section" class="hidden mt-8">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-display font-700 text-white text-lg flex items-center gap-2">
+          <i class="fa-solid fa-circle-check text-emerald-400"></i>
+          <span id="results-title">Results</span>
+        </h3>
+        <div class="flex gap-3">
+          <button id="download-all-btn" class="btn-primary px-5 py-2 rounded-xl text-sm flex items-center gap-2 hidden">
+            <i class="fa-solid fa-download text-xs"></i> Download All (ZIP)
+          </button>
+          <button id="clear-btn" class="btn-ghost px-4 py-2 rounded-xl text-sm flex items-center gap-2">
+            <i class="fa-solid fa-trash-can text-xs"></i> Clear
+          </button>
+        </div>
+      </div>
+      <div id="results-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     BEFORE / AFTER COMPARISON SLIDER
+═══════════════════════════════════════════════════════════ -->
+<section class="py-24 px-4 relative">
+  <div class="orb w-72 h-72 bg-yellow-400/5 top-12 right-1/4 z-0"></div>
+
+  <div class="max-w-5xl mx-auto relative z-10">
+    <div class="reveal visible">
+      <p class="text-xs font-display font-600 tracking-widest uppercase text-cyan-400 mb-3">Real Results</p>
+      <h2 class="font-display font-800 text-4xl md:text-5xl text-white mb-4">See the <span class="text-gradient">Magic</span></h2>
+      <p class="text-slate-400 max-w-xl mx-auto">Left: Original Gemini output with watermark. Right: Pixel-perfect watermark restoration.</p>
+    </div>
+
+    <div class="reveal visible" style="animation-delay:0.2s;">
+      <div id="comparison" class="comparison-container glass" style="height: 440px; max-width: 800px; margin: 0 auto;">
+
+        <!-- BEFORE image (base layer — watermarked) -->
+        <div style="position:absolute;inset:0;">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="bg1" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#0d1b2a"/>
+                <stop offset="100%" stop-color="#1a0533"/>
+              </linearGradient>
+              <filter id="blur1"><feGaussianBlur stdDeviation="2"/></filter>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#bg1)"/>
+            <!-- Abstract AI art content -->
+            <circle cx="300" cy="180" r="140" fill="rgba(0,212,255,0.08)" filter="url(#blur1)"/>
+            <circle cx="500" cy="280" r="100" fill="rgba(139,92,246,0.1)" filter="url(#blur1)"/>
+            <ellipse cx="200" cy="340" rx="120" ry="80" fill="rgba(245,200,66,0.06)" filter="url(#blur1)"/>
+            <!-- Geometric shapes representing AI art -->
+            <polygon points="280,80 380,200 180,200" fill="none" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+            <rect x="420" y="120" width="140" height="140" rx="8" fill="none" stroke="rgba(139,92,246,0.2)" stroke-width="1" transform="rotate(15,490,190)"/>
+            <circle cx="350" cy="280" r="60" fill="none" stroke="rgba(245,200,66,0.15)" stroke-width="1"/>
+            <!-- Stars/sparkles -->
+            <text x="100" y="100" font-size="24" fill="rgba(255,255,255,0.1)">✦</text>
+            <text x="550" y="150" font-size="18" fill="rgba(255,255,255,0.08)">✦</text>
+            <text x="250" y="380" font-size="16" fill="rgba(255,255,255,0.07)">✦</text>
+            <!-- Watermark overlay -->
+            <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" font-size="22" font-family="Arial" fill="rgba(255,255,255,0.55)" font-weight="bold" transform="rotate(-25,400,220)" opacity="0.6">Generated by Gemini</text>
+            <text x="50%" y="60%" dominant-baseline="middle" text-anchor="middle" font-size="13" font-family="Arial" fill="rgba(255,255,255,0.35)" transform="rotate(-25,400,260)">AI-generated · google.com/gemini</text>
+            <!-- Gemini logo watermark (simplified) -->
+            <g transform="translate(340,370) rotate(-25)">
+              <path d="M0,-12 C6,-6 12,0 0,12 C-12,0 -6,-6 0,-12Z" fill="rgba(255,255,255,0.3)"/>
+            </g>
+            <!-- BEFORE label -->
+            <rect x="16" y="16" width="80" height="28" rx="14" fill="rgba(239,68,68,0.85)"/>
+            <text x="56" y="34" text-anchor="middle" font-size="11" font-family="Arial" font-weight="bold" fill="white" letter-spacing="1">BEFORE</text>
+          </svg>
+        </div>
+
+        <!-- AFTER image (clipped reveal) -->
+        <div class="comparison-after" id="comparison-after" style="clip-path: inset(0 50% 0 0);">
+          <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="bg2" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stop-color="#0d1b2a"/>
+                <stop offset="100%" stop-color="#1a0533"/>
+              </linearGradient>
+              <filter id="blur2"><feGaussianBlur stdDeviation="2"/></filter>
+            </defs>
+            <rect width="100%" height="100%" fill="url(#bg2)"/>
+            <!-- Same art but NO watermark -->
+            <circle cx="300" cy="180" r="140" fill="rgba(0,212,255,0.08)" filter="url(#blur2)"/>
+            <circle cx="500" cy="280" r="100" fill="rgba(139,92,246,0.1)" filter="url(#blur2)"/>
+            <ellipse cx="200" cy="340" rx="120" ry="80" fill="rgba(245,200,66,0.06)" filter="url(#blur2)"/>
+            <polygon points="280,80 380,200 180,200" fill="none" stroke="rgba(0,212,255,0.2)" stroke-width="1"/>
+            <rect x="420" y="120" width="140" height="140" rx="8" fill="none" stroke="rgba(139,92,246,0.2)" stroke-width="1" transform="rotate(15,490,190)"/>
+            <circle cx="350" cy="280" r="60" fill="none" stroke="rgba(245,200,66,0.15)" stroke-width="1"/>
+            <text x="100" y="100" font-size="24" fill="rgba(255,255,255,0.1)">✦</text>
+            <text x="550" y="150" font-size="18" fill="rgba(255,255,255,0.08)">✦</text>
+            <text x="250" y="380" font-size="16" fill="rgba(255,255,255,0.07)">✦</text>
+            <!-- No watermark! Clean! -->
+            <!-- AFTER label -->
+            <rect x="16" y="16" width="70" height="28" rx="14" fill="rgba(16,185,129,0.85)"/>
+            <text x="51" y="34" text-anchor="middle" font-size="11" font-family="Arial" font-weight="bold" fill="white" letter-spacing="1">AFTER</text>
+            <!-- Sparkle indicators showing clean result -->
+            <text x="55%" y="45%" font-size="20" fill="rgba(16,185,129,0.5)" text-anchor="middle">✓</text>
+            <text x="60%" y="55%" font-size="14" font-family="Arial" fill="rgba(16,185,129,0.7)" text-anchor="middle">Clean · No artifacts</text>
+          </svg>
+        </div>
+
+        <!-- Slider handle -->
+        <div class="comparison-handle" id="comparison-handle" style="left:50%;">
+          <div class="handle-arrows">
+            <i class="fa-solid fa-left-right text-slate-800 text-sm"></i>
+          </div>
+        </div>
+
+        <!-- Labels -->
+        <span class="comparison-label" style="left:16px;">
+          <i class="fa-solid fa-circle text-red-400 text-xs mr-1"></i>Original
+        </span>
+        <span class="comparison-label" style="right:16px;">
+          <i class="fa-solid fa-circle text-emerald-400 text-xs mr-1"></i>Restored
+        </span>
+        <!-- Drag hint -->
+        <div id="drag-hint" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div class="glass px-4 py-2 rounded-full text-xs font-display font-600 text-white/80 flex items-center gap-2" style="transition:opacity 0.5s;">
+            <i class="fa-solid fa-left-right text-cyan-400"></i> Drag to compare
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FEATURES GRID
+═══════════════════════════════════════════════════════════ -->
+<section id="features" class="py-24 px-4 relative">
+  <div class="orb w-80 h-80 bg-cyan-500/8 bottom-20 -left-20 z-0"></div>
+
+  <div class="max-w-6xl mx-auto relative z-10">
+    <div class="reveal visible">
+      <p class="text-xs font-display font-600 tracking-widest uppercase text-yellow-400 mb-3">Capabilities</p>
+      <h2 class="font-display font-800 text-4xl md:text-5xl text-white mb-4">Why <span class="text-gradient">Pristine?</span></h2>
+      <p class="text-slate-400 max-w-lg mx-auto">Built for people who demand privacy, precision, and performance — without compromise.</p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+
+      <!-- Card 1 -->
+      <div class="reveal visible" style="animation-delay:0.1s;">
+        <div class="icon-wrap bg-cyan-500/10 border border-cyan-500/20 mb-5 text-cyan-400">
+          <i class="fa-solid fa-shield-halved"></i>
+        </div>
+        <h3 class="font-display font-700 text-white text-lg mb-2">Local Processing</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">All computation happens in-browser via WebAssembly. Your images never touch a server, database, or CDN. Guaranteed.</p>
+        <div class="mt-4 flex items-center gap-1.5 text-cyan-400 text-xs font-display font-600">
+          <i class="fa-solid fa-lock text-xs"></i> Zero data exposure
+        </div>
+      </div>
+
+      <!-- Card 2 -->
+      <div class="reveal visible" style="animation-delay:0.15s;">
+        <div class="icon-wrap bg-emerald-500/10 border border-emerald-500/20 mb-5 text-emerald-400">
+          <i class="fa-brands fa-github"></i>
+        </div>
+        <h3 class="font-display font-700 text-white text-lg mb-2">Open Source Core</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Fully transparent and auditable. Every algorithm is verifiable on GitHub. No black boxes, no trust required.</p>
+        <div class="mt-4 flex items-center gap-1.5 text-emerald-400 text-xs font-display font-600">
+          <i class="fa-solid fa-code-branch text-xs"></i> MIT Licensed
+        </div>
+      </div>
+
+      <!-- Card 3 -->
+      <div class="reveal visible" style="animation-delay:0.2s;">
+        <div class="icon-wrap bg-violet-500/10 border border-violet-500/20 mb-5 text-violet-400">
+          <i class="fa-solid fa-image"></i>
+        </div>
+        <h3 class="font-display font-700 text-white text-lg mb-2">Lossless Restoration</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Reverse Alpha Compositing mathematics recovers exact pixel values. No blurring, no smearing — pixel-perfect output every time.</p>
+        <div class="mt-4 flex items-center gap-1.5 text-violet-400 text-xs font-display font-600">
+          <i class="fa-solid fa-magnifying-glass text-xs"></i> 100% fidelity
+        </div>
+      </div>
+
+      <!-- Card 4 -->
+      <div class="reveal visible" style="animation-delay:0.25s;">
+        <div class="icon-wrap bg-yellow-500/10 border border-yellow-500/20 mb-5 text-yellow-400">
+          <i class="fa-solid fa-bolt"></i>
+        </div>
+        <h3 class="font-display font-700 text-white text-lg mb-2">Batch Processing</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Drop 100 images simultaneously. Parallel processing via Web Workers ensures the batch completes in seconds, not minutes.</p>
+        <div class="mt-4 flex items-center gap-1.5 text-yellow-400 text-xs font-display font-600">
+          <i class="fa-solid fa-layer-group text-xs"></i> Up to 100 files at once
+        </div>
+      </div>
+
+      <!-- Card 5 -->
+      <div class="reveal visible" style="animation-delay:0.3s;">
+        <div class="icon-wrap bg-rose-500/10 border border-rose-500/20 mb-5 text-rose-400">
+          <i class="fa-solid fa-heart"></i>
+        </div>
+        <h3 class="font-display font-700 text-white text-lg mb-2">100% Free</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">No hidden fees, no freemium traps, no signup walls. Pristine is, and always will be, free for everyone. No credit card required.</p>
+        <div class="mt-4 flex items-center gap-1.5 text-rose-400 text-xs font-display font-600">
+          <i class="fa-solid fa-infinity text-xs"></i> Forever free
+        </div>
+      </div>
+
+      <!-- Card 6 -->
+      <div class="reveal visible" style="animation-delay:0.35s;">
+        <div class="icon-wrap bg-sky-500/10 border border-sky-500/20 mb-5 text-sky-400">
+          <i class="fa-solid fa-globe"></i>
+        </div>
+        <h3 class="font-display font-700 text-white text-lg mb-2">Cross-Platform</h3>
+        <p class="text-slate-400 text-sm leading-relaxed">Works flawlessly on Windows, macOS, Linux, iOS and Android. Any modern browser — Chrome, Firefox, Safari, Edge — is supported.</p>
+        <div class="mt-4 flex items-center gap-1.5 text-sky-400 text-xs font-display font-600">
+          <i class="fa-solid fa-check-circle text-xs"></i> All major browsers
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     WORKFLOW — 3 STEPS
+═══════════════════════════════════════════════════════════ -->
+<section class="py-24 px-4 relative">
+  <div class="orb w-96 h-96 bg-violet-600/6 top-0 right-0 z-0"></div>
+
+  <div class="max-w-5xl mx-auto relative z-10">
+    <div class="reveal visible">
+      <p class="text-xs font-display font-600 tracking-widest uppercase text-violet-400 mb-3">Workflow</p>
+      <h2 class="font-display font-800 text-4xl md:text-5xl text-white mb-4">3 Steps to <span class="text-gradient">Clean Images</span></h2>
+    </div>
+
+    <!-- Steps — Desktop horizontal, mobile vertical -->
+    <div class="reveal visible" style="animation-delay:0.2s;">
+
+      <!-- Step 01 -->
+      <div class="flex flex-col items-center text-center md:flex-1 relative">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-cyan-600/10 border border-cyan-500/30 flex items-center justify-center mb-4 glow-cyan hover-lift">
+          <i class="fa-solid fa-cloud-arrow-up text-xl text-cyan-400"></i>
+        </div>
+        <div class="font-display font-800 text-5xl text-cyan-500/20 mb-1 leading-none">01</div>
+        <h3 class="font-display font-700 text-white text-xl mb-2">Upload</h3>
+        <p class="text-slate-400 text-sm max-w-48 leading-relaxed">Drag and drop PNG, JPG, or WEBP files into the workspace — or click to browse.</p>
+        <!-- Mobile connector -->
+        <div class="md:hidden w-px h-12 bg-gradient-to-b from-cyan-500/40 to-violet-500/20 mt-6"></div>
+      </div>
+
+      <!-- Desktop connector -->
+      <div class="step-line hidden md:block" style="margin-top:32px;"></div>
+
+      <!-- Step 02 -->
+      <div class="flex flex-col items-center text-center md:flex-1">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 to-violet-600/10 border border-violet-500/30 flex items-center justify-center mb-4 hover-lift" style="box-shadow: 0 0 30px rgba(139,92,246,0.2)">
+          <i class="fa-solid fa-microchip text-xl text-violet-400"></i>
+        </div>
+        <div class="font-display font-800 text-5xl text-violet-500/20 mb-1 leading-none">02</div>
+        <h3 class="font-display font-700 text-white text-xl mb-2">Process</h3>
+        <p class="text-slate-400 text-sm max-w-48 leading-relaxed">The browser auto-detects the Gemini watermark and removes it locally using reverse compositing.</p>
+        <!-- Mobile connector -->
+        <div class="md:hidden w-px h-12 bg-gradient-to-b from-violet-500/40 to-yellow-500/20 mt-6"></div>
+      </div>
+
+      <!-- Desktop connector -->
+      <div class="step-line hidden md:block" style="margin-top:32px; background: linear-gradient(90deg, rgba(139,92,246,0.5), rgba(245,200,66,0.4));"></div>
+
+      <!-- Step 03 -->
+      <div class="flex flex-col items-center text-center md:flex-1">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-br from-yellow-500/20 to-yellow-600/10 border border-yellow-500/30 flex items-center justify-center mb-4 hover-lift glow-gold">
+          <i class="fa-solid fa-download text-xl text-yellow-400"></i>
+        </div>
+        <div class="font-display font-800 text-5xl text-yellow-500/20 mb-1 leading-none">03</div>
+        <h3 class="font-display font-700 text-white text-xl mb-2">Download</h3>
+        <p class="text-slate-400 text-sm max-w-48 leading-relaxed">Get your clean, full-resolution images instantly. Batch ZIP download or one-click individual saves.</p>
+      </div>
+
+    </div>
+
+    <!-- CTA below steps -->
+    <div class="reveal visible" style="animation-delay:0.3s;">
+      <button onclick="document.getElementById('drop-zone').scrollIntoView({behavior:'smooth'})" class="btn-primary px-10 py-4 rounded-xl text-base inline-flex items-center gap-3">
+        <i class="fa-solid fa-wand-magic-sparkles"></i>
+        Start Removing Watermarks — It's Free
+        <i class="fa-solid fa-arrow-right text-sm"></i>
+      </button>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FAQ ACCORDION
+═══════════════════════════════════════════════════════════ -->
+<section id="faq" class="py-24 px-4 relative">
+  <div class="orb w-72 h-72 bg-cyan-500/6 top-10 left-1/4 z-0"></div>
+
+  <div class="max-w-3xl mx-auto relative z-10">
+    <div class="reveal visible">
+      <p class="text-xs font-display font-600 tracking-widest uppercase text-cyan-400 mb-3">FAQ</p>
+      <h2 class="font-display font-800 text-4xl md:text-5xl text-white mb-4">Got <span class="text-gradient">Questions?</span></h2>
+      <p class="text-slate-400">Everything you need to know about Pristine.</p>
+    </div>
+
+    <div class="reveal visible" style="animation-delay:0.15s;">
+
+      <!-- FAQ Item 1 -->
+      <div class="faq-item">
+        <button class="faq-trigger w-full text-left px-6 py-5 flex items-center justify-between gap-4 hover:bg-white/2 transition-colors" onclick="toggleFaq(this)">
+          <div class="flex items-center gap-4">
+            <span class="w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center flex-shrink-0">
+              <i class="fa-solid fa-shield text-cyan-400 text-xs"></i>
+            </span>
+            <span class="font-display font-600 text-white text-sm md:text-base">Are my images truly private and safe?</span>
+          </div>
+          <i class="fa-solid fa-plus faq-icon text-slate-400 flex-shrink-0 text-sm"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="px-6 pb-5 pl-[68px] text-slate-400 text-sm leading-relaxed">
+            Absolutely. Pristine runs entirely within your browser using the Web Canvas API and WebAssembly. Your images are loaded into memory locally, processed, and the output is offered for download — all without any network request. You can verify this by watching your network tab in DevTools: zero image data is transmitted.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 2 -->
+      <div class="faq-item">
+        <button class="faq-trigger w-full text-left px-6 py-5 flex items-center justify-between gap-4 hover:bg-white/2 transition-colors" onclick="toggleFaq(this)">
+          <div class="flex items-center gap-4">
+            <span class="w-7 h-7 rounded-lg bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center flex-shrink-0">
+              <i class="fa-solid fa-file-image text-yellow-400 text-xs"></i>
+            </span>
+            <span class="font-display font-600 text-white text-sm md:text-base">What file formats does Pristine support?</span>
+          </div>
+          <i class="fa-solid fa-plus faq-icon text-slate-400 flex-shrink-0 text-sm"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="px-6 pb-5 pl-[68px] text-slate-400 text-sm leading-relaxed">
+            Pristine supports PNG, JPEG/JPG, and WEBP formats — the three primary formats Gemini outputs images in. PNG is recommended for best results as it carries the alpha channel data needed for reverse compositing. Output is always delivered in lossless PNG.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 3 -->
+      <div class="faq-item">
+        <button class="faq-trigger w-full text-left px-6 py-5 flex items-center justify-between gap-4 hover:bg-white/2 transition-colors" onclick="toggleFaq(this)">
+          <div class="flex items-center gap-4">
+            <span class="w-7 h-7 rounded-lg bg-violet-500/10 border border-violet-500/20 flex items-center justify-center flex-shrink-0">
+              <i class="fa-solid fa-magnifying-glass text-violet-400 text-xs"></i>
+            </span>
+            <span class="font-display font-600 text-white text-sm md:text-base">Does it degrade image quality in any way?</span>
+          </div>
+          <i class="fa-solid fa-plus faq-icon text-slate-400 flex-shrink-0 text-sm"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="px-6 pb-5 pl-[68px] text-slate-400 text-sm leading-relaxed">
+            No. Pristine uses Reverse Alpha Compositing — a mathematical inversion of how the watermark was applied. For pixels where the watermark is fully transparent (i.e., most of the image), the original pixel is recovered exactly. In regions of high watermark opacity, the reconstruction is visually imperceptible. Output is lossless PNG — no JPEG compression artifacts are introduced.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 4 -->
+      <div class="faq-item">
+        <button class="faq-trigger w-full text-left px-6 py-5 flex items-center justify-between gap-4 hover:bg-white/2 transition-colors" onclick="toggleFaq(this)">
+          <div class="flex items-center gap-4">
+            <span class="w-7 h-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+              <i class="fa-solid fa-layer-group text-emerald-400 text-xs"></i>
+            </span>
+            <span class="font-display font-600 text-white text-sm md:text-base">Can I process multiple images at once?</span>
+          </div>
+          <i class="fa-solid fa-plus faq-icon text-slate-400 flex-shrink-0 text-sm"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="px-6 pb-5 pl-[68px] text-slate-400 text-sm leading-relaxed">
+            Yes! Batch processing is a first-class feature. Drop up to 100 images at once and Pristine will queue them for processing using Web Workers for true parallelism. A live progress indicator shows status per file. When complete, download all clean images as a single ZIP archive.
+          </div>
+        </div>
+      </div>
+
+      <!-- FAQ Item 5 -->
+      <div class="faq-item" style="border-bottom: none;">
+        <button class="faq-trigger w-full text-left px-6 py-5 flex items-center justify-between gap-4 hover:bg-white/2 transition-colors" onclick="toggleFaq(this)">
+          <div class="flex items-center gap-4">
+            <span class="w-7 h-7 rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center flex-shrink-0">
+              <i class="fa-solid fa-heart text-rose-400 text-xs"></i>
+            </span>
+            <span class="font-display font-600 text-white text-sm md:text-base">Is it really free? What's the catch?</span>
+          </div>
+          <i class="fa-solid fa-plus faq-icon text-slate-400 flex-shrink-0 text-sm"></i>
+        </button>
+        <div class="faq-answer">
+          <div class="px-6 pb-5 pl-[68px] text-slate-400 text-sm leading-relaxed">
+            There is no catch. Pristine is free, open-source, and has no rate limits. It doesn't cost us server resources because everything runs in your browser. An optional Enterprise plan exists for teams who want advanced features, SLA guarantees, and dedicated support — but the core tool is free forever with no signup required.
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     FOOTER
+═══════════════════════════════════════════════════════════ -->
+<footer class="border-t border-white/5 pt-16 pb-8 px-4 relative">
+  <div class="orb w-96 h-96 bg-cyan-500/5 -bottom-20 left-1/2 -translate-x-1/2 z-0"></div>
+
+  <div class="max-w-6xl mx-auto relative z-10">
+
+    <!-- Top banner -->
+    <div class="reveal visible" style="animation-delay:0s; background: rgba(0,212,255,0.03);">
+      <div class="flex items-center justify-center gap-3 mb-3">
+        <i class="fa-solid fa-lock text-cyan-400 text-xl"></i>
+        <h3 class="font-display font-800 text-2xl md:text-3xl text-white">Enterprise-Grade Privacy.</h3>
+      </div>
+      <p class="font-display font-600 text-xl text-gradient-cyan mb-2">100% Local Processing.</p>
+      <p class="text-slate-400 text-sm max-w-lg mx-auto">Your images are your data. We built Pristine so you never have to trust us with them.</p>
+      <div class="flex flex-wrap items-center justify-center gap-6 mt-6 text-xs text-slate-500">
+        <span class="flex items-center gap-1.5"><i class="fa-solid fa-check text-cyan-400"></i> SOC 2 Ready</span>
+        <span class="flex items-center gap-1.5"><i class="fa-solid fa-check text-cyan-400"></i> GDPR Compliant</span>
+        <span class="flex items-center gap-1.5"><i class="fa-solid fa-check text-cyan-400"></i> HIPAA Safe</span>
+        <span class="flex items-center gap-1.5"><i class="fa-solid fa-check text-cyan-400"></i> No cookies</span>
+      </div>
+    </div>
+
+    <!-- Footer columns -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-10 mb-14">
+
+      <!-- Brand -->
+      <div class="col-span-2 md:col-span-1">
+        <div class="flex items-center gap-2 mb-4">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center glow-cyan">
+            <i class="fa-solid fa-wand-magic-sparkles text-black text-xs"></i>
+          </div>
+          <span class="font-display font-800 text-xl text-gradient">Pristine</span>
+        </div>
+        <p class="text-slate-500 text-sm leading-relaxed mb-5">The privacy-first image processing tool for the AI era.</p>
+        <div class="flex gap-3">
+          <a href="#" class="w-8 h-8 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all text-sm">
+            <i class="fa-brands fa-github"></i>
+          </a>
+          <a href="#" class="w-8 h-8 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all text-sm">
+            <i class="fa-brands fa-twitter"></i>
+          </a>
+          <a href="#" class="w-8 h-8 glass rounded-lg flex items-center justify-center text-slate-400 hover:text-cyan-400 hover:border-cyan-500/30 transition-all text-sm">
+            <i class="fa-brands fa-discord"></i>
+          </a>
+        </div>
+      </div>
+
+      <!-- Tools -->
+      <div>
+        <h4 class="font-display font-700 text-white text-sm mb-5 tracking-wide">Tools</h4>
+        <ul class="space-y-3 text-sm text-slate-500">
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">Gemini Remover</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">Batch Processor</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">Format Converter</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">API Access</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">CLI Tool</a></li>
+        </ul>
+      </div>
+
+      <!-- Company -->
+      <div>
+        <h4 class="font-display font-700 text-white text-sm mb-5 tracking-wide">Company</h4>
+        <ul class="space-y-3 text-sm text-slate-500">
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">About</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">Blog</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">Changelog</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">GitHub</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">Contact</a></li>
+        </ul>
+      </div>
+
+      <!-- Legal -->
+      <div>
+        <h4 class="font-display font-700 text-white text-sm mb-5 tracking-wide">Legal</h4>
+        <ul class="space-y-3 text-sm text-slate-500">
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">Privacy Policy</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">Terms of Service</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">Cookie Policy</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">DMCA</a></li>
+          <li><a href="#" class="hover:text-cyan-400 transition-colors">Security</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Bottom bar -->
+    <div class="border-t border-white/5 pt-8 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-600">
+      <span>© 2026 Pristine Technologies. All rights reserved.</span>
+      <div class="flex items-center gap-6">
+        <span class="flex items-center gap-1.5">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+          All systems operational
+        </span>
+        <span>Made with <i class="fa-solid fa-heart text-rose-500 text-xs"></i> for privacy</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════════ -->
+<script>
+
+async function checkServer() {
+    try {
+        const resp = await fetch('/api/health');
+        const statusBadge = document.getElementById('connection-status');
+        if (resp.ok) {
+            statusBadge.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i> Server Online';
+            statusBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        } else {
+            statusBadge.innerHTML = '<i class="fa-solid fa-circle-xmark mr-1"></i> Server Offline';
+            statusBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/20';
         }
-        setInterval(checkHealth, 5000);
-        checkHealth();
-
-        // Drag & Drop
-        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); };
-        dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
-        dropZone.ondrop = (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-over');
-            if (e.dataTransfer.files.length) handleUpload(e.dataTransfer.files[0]);
-        };
-
-        fileInput.onchange = () => {
-            if (fileInput.files.length) handleUpload(fileInput.files[0]);
-        };
-
-        async function handleUpload(file) {
-            if (!file) return;
-            
-            // UI Switch
-            dropZone.classList.add('hidden');
-            loadingState.classList.remove('hidden');
-            
-            // Fake progress for feel
-            let progress = 0;
-            const interval = setInterval(() => {
-                progress += Math.random() * 15;
-                if (progress > 90) clearInterval(interval);
-                updateProgress(Math.min(90, progress));
-            }, 200);
-
-            const formData = new FormData();
-            formData.append('image', file);
-
-            try {
-                const response = await fetch('/api/clean', { method: 'POST', body: formData });
-                if (!response.ok) throw new Error('Failed to process');
-
-                const blob = await response.blob();
-                const url = URL.createObjectURL(blob);
-                
-                clearInterval(interval);
-                updateProgress(100);
-                
-                setTimeout(() => {
-                    document.getElementById('result-image').src = url;
-                    document.getElementById('download-link').href = url;
-                    document.getElementById('download-link').download = file.name.replace(/.[^.]+$/, '') + '_pristine.png';
-                    
-                    loadingState.classList.add('hidden');
-                    resultSection.classList.remove('hidden');
-                }, 600);
-
-            } catch (err) {
-                alert('Error: ' + err.message);
-                resetApp();
-            }
+    } catch (e) {
+        if (document.getElementById('connection-status')) {
+            document.getElementById('connection-status').innerHTML = '<i class="fa-solid fa-circle-xmark mr-1"></i> Server Offline';
         }
+    }
+}
+setInterval(checkServer, 5000);
+checkServer();
 
-        function updateProgress(val) {
-            progressBar.style.width = val + '%';
-            progressText.innerText = Math.round(val) + '%';
-        }
+// ─── THEME TOGGLE ───────────────────────────────────────────
+(function() {
+  const html = document.documentElement;
+  const icons = [document.getElementById('theme-icon'), document.getElementById('theme-icon-mobile')];
+  const DARK = 'dark';
 
-        function resetApp() {
-            dropZone.classList.remove('hidden');
-            loadingState.classList.add('hidden');
-            resultSection.classList.add('hidden');
-            progressBar.style.width = '0%';
-            fileInput.value = '';
+  function setTheme(dark) {
+    if (dark) {
+      html.classList.add(DARK);
+      html.classList.remove('light');
+      icons.forEach(i => { if(i){ i.className = 'fa-solid fa-moon text-sm'; } });
+      document.body.style.background = '';
+    } else {
+      html.classList.remove(DARK);
+      html.classList.add('light');
+      icons.forEach(i => { if(i){ i.className = 'fa-solid fa-sun text-sm'; } });
+      document.body.style.background = '#f0f4f8';
+    }
+    localStorage.setItem('pristine-theme', dark ? 'dark' : 'light');
+  }
+
+  const saved = localStorage.getItem('pristine-theme');
+  setTheme(saved !== 'light');
+
+  ['theme-toggle','theme-toggle-mobile'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) btn.addEventListener('click', () => setTheme(!html.classList.contains(DARK)));
+  });
+})();
+
+// ─── MOBILE MENU ────────────────────────────────────────────
+(function() {
+  const hamburger = document.getElementById('hamburger');
+  const menu = document.getElementById('mobile-menu');
+  let open = false;
+  hamburger.addEventListener('click', () => {
+    open = !open;
+    menu.classList.toggle('open', open);
+    document.getElementById('ham-1').style.transform = open ? 'rotate(45deg) translateY(8px)' : '';
+    document.getElementById('ham-2').style.opacity = open ? '0' : '1';
+    document.getElementById('ham-3').style.transform = open ? 'rotate(-45deg) translateY(-8px) translateX(4px)' : '';
+  });
+  // Close on nav link click
+  menu.querySelectorAll('a').forEach(a => a.addEventListener('click', () => {
+    open = false; menu.classList.remove('open');
+    ['ham-1','ham-2','ham-3'].forEach(id => document.getElementById(id).style.transform = document.getElementById(id).style.opacity = '');
+    document.getElementById('ham-2').style.opacity = '1';
+  }));
+})();
+
+// ─── NAVBAR SCROLL EFFECT ───────────────────────────────────
+window.addEventListener('scroll', () => {
+  const nav = document.getElementById('navbar');
+  if (window.scrollY > 20) {
+    nav.style.background = 'rgba(4,5,10,0.85)';
+    nav.style.boxShadow = '0 1px 0 rgba(255,255,255,0.05), 0 4px 20px rgba(0,0,0,0.4)';
+  } else {
+    nav.style.background = '';
+    nav.style.boxShadow = '';
+  }
+}, { passive: true });
+
+// ═══════════════════════════════════════════════════════════
+// GEMINI WATERMARK REMOVAL ENGINE
+// Algorithm: Reverse Alpha Blending (MIT — GargantuaX/gemini-watermark-remover)
+//
+// Gemini composites: watermarked = α·logo + (1-α)·original
+// Inverse:           original    = (watermarked - α·logo) / (1-α)
+//
+// Watermark is a white (255,255,255) semi-transparent stamp in
+// bottom-right corner. Size determined by image dimensions:
+//   ≥ 1024px wide/tall  → 96×96px, margin 64px
+//   < 1024px            → 48×48px, margin 32px
+// ═══════════════════════════════════════════════════════════
+
+// ── Build the Gemini star watermark alpha map on a canvas ──
+function buildWatermarkAlphaMap(wmSize) {
+  const c = document.createElement('canvas');
+  c.width = c.height = wmSize;
+  const ctx = c.getContext('2d');
+  // Gemini star = 4-pointed shape drawn via bezier curves (white logo on transparent)
+  // We approximate with the known geometry from the open-source project
+  const s = wmSize;
+  ctx.clearRect(0,0,s,s);
+  ctx.fillStyle = 'white';
+
+  // Draw the Gemini 4-pointed star (diamond-like with bezier sides)
+  // This matches the actual Gemini watermark shape
+  const cx = s/2, cy = s/2, r = s * 0.48, ri = s * 0.06;
+  ctx.beginPath();
+  // Top
+  ctx.moveTo(cx, cy - r);
+  ctx.bezierCurveTo(cx + ri, cy - ri*2, cx + ri*2, cy - ri, cx + r, cy);
+  // Right
+  ctx.bezierCurveTo(cx + ri*2, cy + ri, cx + ri, cy + ri*2, cx, cy + r);
+  // Bottom
+  ctx.bezierCurveTo(cx - ri, cy + ri*2, cx - ri*2, cy + ri, cx - r, cy);
+  // Left
+  ctx.bezierCurveTo(cx - ri*2, cy - ri, cx - ri, cy - ri*2, cx, cy - r);
+  ctx.closePath();
+  ctx.fill();
+
+  return ctx.getImageData(0, 0, s, s);
+}
+
+// Pre-build alpha maps for both sizes
+const WM_ALPHA_CACHE = {};
+function getWatermarkAlpha(wmSize) {
+  if (!WM_ALPHA_CACHE[wmSize]) WM_ALPHA_CACHE[wmSize] = buildWatermarkAlphaMap(wmSize);
+  return WM_ALPHA_CACHE[wmSize];
+}
+
+// ── Detect watermark parameters for given image dimensions ──
+function detectWatermark(imgW, imgH) {
+  // Gemini known watermark config (from open-source detection table)
+  const large = imgW >= 1024 || imgH >= 1024;
+  return {
+    wmSize:       large ? 96 : 48,
+    marginRight:  large ? 64 : 32,
+    marginBottom: large ? 64 : 32,
+  };
+}
+
+// ── Core: apply reverse alpha blending to ImageData ──
+function removeWatermark(imageData, alphaOverride = 0.48) {
+  const { width, height, data } = imageData;
+  const { wmSize, marginRight, marginBottom } = detectWatermark(width, height);
+
+  // Watermark region (bottom-right)
+  const base_x0 = width  - marginRight  - wmSize;
+  const base_y0 = height - marginBottom - wmSize;
+
+  const x0 = base_x0, y0 = base_y0;
+
+  // --- Enhanced Detection: Anchor Search v3 (Cross-Correlation) ---
+  let bestX = x0, bestY = y0, minDiff = Infinity;
+  const searchRange = 24; // Scan larger area for misalignment
+
+  // We sample 9 points on the star shape for better detection accuracy
+  const samples = [
+    [0.5, 0.5], // Center
+    [0.5, 0.1], [0.5, 0.9], // Vertical tips
+    [0.1, 0.5], [0.9, 0.5], // Horizontal tips
+    [0.3, 0.3], [0.7, 0.7], [0.3, 0.7], [0.7, 0.3] // Diagonals
+  ];
+
+  for (let dy = -searchRange; dy <= searchRange; dy += 2) {
+    for (let dx = -searchRange; dx <= searchRange; dx += 2) {
+      let diff = 0;
+      for (const [sx, sy] of samples) {
+        const ax = Math.floor(sx * wmSize);
+        const ay = Math.floor(sy * wmSize);
+        const ix = x0 + dx + ax;
+        const iy = y0 + dy + ay;
+        if (ix < 0 || iy < 0 || ix >= width || iy >= height) { diff += 2000; continue; }
+        const pixelVal = data[(iy * width + ix) * 4]; 
+        diff += Math.abs(255 - pixelVal);
+      }
+      if (diff < minDiff) { 
+        minDiff = diff; bestX = x0 + dx; bestY = y0 + dy; 
+      }
+    }
+  }
+  
+  // Fine-tuning pass (step 1)
+  const x1 = bestX, y1 = bestY;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      let diff = 0;
+      for (const [sx, sy] of samples) {
+        const ax = Math.floor(sx * wmSize);
+        const ay = Math.floor(sy * wmSize);
+        const ix = x1 + dx + ax;
+        const iy = y1 + dy + ay;
+        if (ix < 0 || iy < 0 || ix >= width || iy >= height) { diff += 2000; continue; }
+        const pixelVal = data[(iy * width + ix) * 4];
+        diff += Math.abs(255 - pixelVal);
+      }
+      if (diff < minDiff) { minDiff = diff; bestX = x1 + dx; bestY = y1 + dy; }
+    }
+  }
+
+  const finalX = bestX, finalY = bestY;
+\n  if (finalX < 0 || finalY < 0) return { imageData, applied: false, reason: 'Image too small for watermark region' };
+
+  // Get alpha map
+  const alphaMap = getWatermarkAlpha(wmSize);
+  const alphaData = alphaMap.data; // RGBA of the white logo on transparent bg
+
+  // Clone pixel data so we don't mutate original
+  const out = new Uint8ClampedArray(data);
+
+  let appliedPixels = 0;
+
+  for (let wy = 0; wy < wmSize; wy++) {
+    for (let wx = 0; wx < wmSize; wx++) {
+      const alphaIdx = (wy * wmSize + wx) * 4;
+      const alpha = (alphaData[alphaIdx + 3] / 255) * alphaOverride; // scale by Gemini opacity
+
+      if (alpha < 0.05) continue; // fully transparent — skip
+
+      const px = finalX + wx;
+      const py = finalY + wy;
+      if (px < 0 || py < 0 || px >= width || py >= height) continue;
+
+      const idx = (py * width + px) * 4;
+      const logoColor = 255; // Gemini watermark is white
+
+      // Reverse alpha compositing for each channel
+      for (let ch = 0; ch < 3; ch++) {
+        const composited = data[idx + ch];
+        // original = (composited - alpha * logo) / (1 - alpha)
+        const denom = 1 - alpha;
+        if (denom < 0.01) {
+          // If alpha is too high, we can't recover the pixel perfectly.
+          // Instead of painting white, we just keep the composited pixel
+          // or try to blend it less aggressively.
+          out[idx + ch] = composited; 
+        } else {
+          const restored = (composited - alpha * logoColor) / denom;
+          out[idx + ch] = Math.max(0, Math.min(255, Math.round(restored)));
         }
-    </script>
+      }
+      // Keep original alpha channel
+      out[idx + 3] = data[idx + 3];
+      appliedPixels++;
+    }
+  }
+
+  // Validate: if very few pixels affected, watermark may not be present
+  const minExpected = wmSize * wmSize * 0.05;
+  if (appliedPixels < minExpected) {
+    return { imageData, applied: false, reason: 'No Gemini watermark detected' };
+  }
+
+  const result = new ImageData(out, width, height);
+  return { imageData: result, applied: true, reason: `Removed ${wmSize}px stamp at ${finalX},${finalY}` };
+}
+
+// ── Process a single File → returns {canvas, name, applied, reason, originalImageData} ──
+
+async function processFile(file) {
+  const formData = new FormData();
+  formData.append('image', file);
+  try {
+    const response = await fetch('/api/clean', { method: 'POST', body: formData });
+    if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || 'API processing failed');
+    }
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const img = new Image();
+    return new Promise((resolve) => {
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        resolve({ canvas, name: file.name, applied: true, reason: 'Cleaned by Pristine Engine' });
+      };
+      img.onerror = () => resolve({ canvas: null, name: file.name, applied: false, reason: 'Result image failed to load' });
+      img.src = url;
+    });
+  } catch (e) {
+    console.error(e);
+    return { canvas: null, name: file.name, applied: false, reason: e.message };
+  }
+}
+
+
+// ── Re-process existing results with new alpha ──
+function reprocessResults(results, alpha) {
+  results.forEach(res => {
+    if (!res.canvas || !res.originalImageData) return;
+    const { imageData: resultData, applied, reason } = removeWatermark(res.originalImageData, alpha);
+    const ctx = res.canvas.getContext('2d');
+    ctx.putImageData(resultData, 0, 0);
+    res.applied = applied;
+    res.reason = reason;
+    
+    // Update the UI card
+    if (res.card) {
+      const thumb = res.canvas.toDataURL('image/jpeg', 0.85);
+      const img = res.card.querySelector('img');
+      if (img) img.src = thumb;
+      const badge = res.card.querySelector('.card-badge');
+      if (badge) {
+        badge.className = `card-badge ${applied ? 'badge-ok' : 'badge-skip'}`;
+        badge.textContent = applied ? '✓ Cleaned' : '⚠ No WM';
+      }
+    }
+  });
+}
+
+// ── Download canvas as PNG (global so card buttons can call it) ──
+window.downloadCanvas = function(canvas, filename) {
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename.replace(/\.[^.]+$/, '') + '_clean.png';
+    a.click();
+    URL.revokeObjectURL(url);
+  }, 'image/png');
+}
+
+// ── ZIP download via manual blob assembly (no external lib needed) ──
+// We use a simple approach: if 1 file, direct download; if many, sequential
+function downloadAll(results) {
+  results.forEach((r, i) => {
+    if (!r.canvas) return;
+    setTimeout(() => downloadCanvas(r.canvas, r.name), i * 120);
+  });
+}
+
+// ─── DROP ZONE + PROCESSING ORCHESTRATOR ─────────────────────
+(function() {
+  const zone        = document.getElementById('drop-zone');
+  const text        = document.getElementById('drop-text');
+  const icon        = document.getElementById('drop-icon');
+  const fileInput   = document.getElementById('file-input');
+  const statusBar   = document.getElementById('status-bar');
+  const statusText  = document.getElementById('status-text');
+  const statusProg  = document.getElementById('status-progress');
+  const statusPct   = document.getElementById('status-pct');
+  const statusSpinner = document.getElementById('status-spinner');
+  const resultsSection = document.getElementById('results-section');
+  const resultsGrid    = document.getElementById('results-grid');
+  const resultsTitle   = document.getElementById('results-title');
+  const dlAllBtn       = document.getElementById('download-all-btn');
+  const clearBtn       = document.getElementById('clear-btn');
+  
+
+  let allResults = [];
+  let dragCounter = 0;
+
+  // Slider event
+  
+
+  // Drag events
+  zone.addEventListener('dragenter', e => {
+    e.preventDefault(); dragCounter++;
+    zone.classList.add('drag-over');
+    text.textContent = 'Release to process images…';
+    icon.style.transform = 'scale(1.1)';
+  });
+  zone.addEventListener('dragleave', () => {
+    dragCounter--;
+    if (dragCounter === 0) {
+      zone.classList.remove('drag-over');
+      text.textContent = 'Drag & drop your Gemini images here';
+      icon.style.transform = '';
+    }
+  });
+  zone.addEventListener('dragover', e => e.preventDefault());
+  zone.addEventListener('drop', e => {
+    e.preventDefault(); dragCounter = 0;
+    zone.classList.remove('drag-over');
+    icon.style.transform = '';
+    const files = [...e.dataTransfer.files].filter(f => /image\/(png|jpeg|webp)/.test(f.type));
+    if (files.length) handleFiles(files);
+  });
+  fileInput.addEventListener('change', () => {
+    const files = [...fileInput.files];
+    fileInput.value = '';
+    if (files.length) handleFiles(files);
+  });
+
+  // Clear button
+  clearBtn.addEventListener('click', () => {
+    resultsSection.classList.add('hidden');
+    settingsCard.classList.add('hidden');
+    resultsGrid.innerHTML = '';
+    allResults = [];
+    dlAllBtn.classList.add('hidden');
+    resetDropZone();
+  });
+
+  // Download all
+  dlAllBtn.addEventListener('click', () => downloadAll(allResults.filter(r => r.applied && r.canvas)));
+
+  function resetDropZone() {
+    text.textContent = 'Drag & drop your Gemini images here';
+    icon.innerHTML = '<i class="fa-solid fa-cloud-arrow-up text-3xl text-cyan-400"></i>';
+    icon.className = 'w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/10 border border-cyan-500/20 flex items-center justify-center glow-cyan transition-all duration-300';
+    icon.style.cssText = '';
+  }
+
+  async function handleFiles(rawFiles) {
+    const files = rawFiles.slice(0, 100);
+    const total = files.length;
+    
+
+    // Show status
+    statusBar.classList.remove('hidden');
+    statusSpinner.style.display = '';
+    resultsSection.classList.remove('hidden');
+    settingsCard.classList.remove('hidden');
+    resultsGrid.innerHTML = '';
+    allResults = [];
+    dlAllBtn.classList.add('hidden');
+
+    // Set icon to processing state
+    icon.innerHTML = '<i class="fa-solid fa-microchip text-3xl text-violet-400 animate-pulse"></i>';
+    icon.style.background = 'rgba(139,92,246,0.1)';
+    icon.style.borderColor = 'rgba(139,92,246,0.3)';
+
+    let processed = 0;
+    let removed = 0;
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const pct = Math.round(((i) / total) * 100);
+      statusText.textContent = `Processing ${i+1} of ${total}: ${file.name}`;
+      statusProg.style.width = pct + '%';
+      statusPct.textContent = pct + '%';
+
+      // Create placeholder card
+      const card = document.createElement('div');
+      card.className = 'result-card processing';
+      card.innerHTML = `
+        <div style="width:100%;aspect-ratio:16/10;background:rgba(255,255,255,0.03);display:flex;align-items:center;justify-content:center;">
+          <div class="w-8 h-8 border-2 border-cyan-400 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+        <div class="card-body">
+          <span class="card-name">${file.name}</span>
+          <span class="card-badge badge-skip">Processing…</span>
+        </div>`;
+      resultsGrid.appendChild(card);
+
+      const result = await processFile(file);
+      result.card = card; // Attach card reference
+      allResults.push(result);
+      processed++;
+      if (result.applied) removed++;
+
+      // Update card with real result
+      card.classList.remove('processing');
+      if (result.canvas) {
+        const thumb = result.canvas.toDataURL('image/jpeg', 0.85);
+        card.innerHTML = `
+          <img src="${thumb}" alt="${result.name}" loading="lazy"/>
+          <div class="card-body">
+            <span class="card-name">${result.name}</span>
+            <span class="card-badge ${result.applied ? 'badge-ok' : 'badge-skip'}">${result.applied ? '✓ Cleaned' : '⚠ No WM'}</span>
+            <button class="dl-btn" onclick="window.downloadCanvas(this._canvas,'${result.name}')">
+              <i class="fa-solid fa-download"></i>
+            </button>
+          </div>`;
+        // Attach canvas reference directly to button
+        card.querySelector('.dl-btn')._canvas = result.canvas;
+      } else {
+        card.innerHTML = `
+          <div style="width:100%;aspect-ratio:16/10;background:rgba(239,68,68,0.05);display:flex;align-items:center;justify-content:center;">
+            <i class="fa-solid fa-triangle-exclamation text-red-400 text-2xl"></i>
+          </div>
+          <div class="card-body">
+            <span class="card-name">${result.name}</span>
+            <span class="card-badge badge-skip">Failed</span>
+          </div>`;
+      }
+    }
+
+    // Done
+    statusProg.style.width = '100%';
+    statusPct.textContent = '100%';
+    statusSpinner.style.display = 'none';
+    statusText.textContent = `Done — ${removed} of ${total} watermark${total>1?'s':''} removed`;
+    resultsTitle.textContent = `${total} image${total>1?'s':''} processed · ${removed} cleaned`;
+
+    if (removed > 1) dlAllBtn.classList.remove('hidden');
+
+    // Update drop zone icon
+    icon.innerHTML = `<i class="fa-solid fa-circle-check text-3xl text-emerald-400"></i>`;
+    icon.style.background = 'rgba(16,185,129,0.1)';
+    icon.style.borderColor = 'rgba(16,185,129,0.3)';
+  }
+})();
+
+// ─── COMPARISON SLIDER ──────────────────────────────────────
+(function() {
+  const container = document.getElementById('comparison');
+  const after = document.getElementById('comparison-after');
+  const handle = document.getElementById('comparison-handle');
+  const hint = document.getElementById('drag-hint');
+  let dragging = false, hintHidden = false;
+
+  function setPos(pct) {
+    pct = Math.max(2, Math.min(98, pct));
+    handle.style.left = pct + '%';
+    after.style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+  }
+
+  function getPct(e) {
+    const rect = container.getBoundingClientRect();
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    return ((clientX - rect.left) / rect.width) * 100;
+  }
+
+  handle.addEventListener('mousedown', e => { dragging = true; e.preventDefault(); });
+  container.addEventListener('mousedown', e => {
+    dragging = true;
+    setPos(getPct(e));
+    if (!hintHidden) { hint.style.opacity = '0'; hintHidden = true; }
+  });
+  window.addEventListener('mousemove', e => { if (dragging) setPos(getPct(e)); });
+  window.addEventListener('mouseup', () => { dragging = false; });
+
+  handle.addEventListener('touchstart', e => { dragging = true; e.preventDefault(); }, {passive:false});
+  container.addEventListener('touchstart', e => {
+    dragging = true;
+    setPos(getPct(e));
+    if (!hintHidden) { hint.style.opacity = '0'; hintHidden = true; }
+  }, {passive:true});
+  window.addEventListener('touchmove', e => { if (dragging) setPos(getPct(e)); }, {passive:true});
+  window.addEventListener('touchend', () => { dragging = false; });
+
+  // Auto-animate on load
+  let animated = false;
+  const observer = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && !animated) {
+      animated = true;
+      let pct = 50, dir = -1, steps = 0;
+      const anim = setInterval(() => {
+        pct += dir * 0.8;
+        setPos(pct);
+        steps++;
+        if (pct <= 20) dir = 1;
+        if (pct >= 50 && steps > 40) clearInterval(anim);
+      }, 16);
+    }
+  }, { threshold: 0.5 });
+  observer.observe(container);
+})();
+
+// ─── FAQ ACCORDION ──────────────────────────────────────────
+function toggleFaq(btn) {
+  const item = btn.closest('.faq-item');
+  const answer = item.querySelector('.faq-answer');
+  const isOpen = item.classList.contains('open');
+
+  // Close all
+  document.querySelectorAll('.faq-item').forEach(el => {
+    el.classList.remove('open');
+    el.querySelector('.faq-answer').classList.remove('open');
+  });
+
+  if (!isOpen) {
+    item.classList.add('open');
+    answer.classList.add('open');
+  }
+}
+
+// ─── SCROLL REVEAL ──────────────────────────────────────────
+(function() {
+  const els = document.querySelectorAll('.reveal');
+  const obs = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
+  els.forEach(el => obs.observe(el));
+})();
+
+// ─── FEATURE CARD MOUSE GLOW ────────────────────────────────
+document.querySelectorAll('.feature-card').forEach(card => {
+  card.addEventListener('mousemove', e => {
+    const r = card.getBoundingClientRect();
+    const x = ((e.clientX - r.left) / r.width) * 100;
+    const y = ((e.clientY - r.top) / r.height) * 100;
+    card.style.setProperty('--mx', x + '%');
+    card.style.setProperty('--my', y + '%');
+  });
+});
+</script>
 </body>
 </html>
