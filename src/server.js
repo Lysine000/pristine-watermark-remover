@@ -47,6 +47,8 @@ const encodeImageData = async (imageData) => {
 };
 
 // API Routes
+app.get('/health', (req, res) => res.status(200).send('OK'));
+
 app.post('/api/clean', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
