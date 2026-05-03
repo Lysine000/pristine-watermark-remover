@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pristine — Watermark Remover</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { background-color: #04050a; color: #e2e8f0; font-family: sans-serif; }
+        .text-gradient { background: linear-gradient(135deg, #fff 0%, #00d4ff 50%, #f5c842 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .glass { background: rgba(255,255,255,0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.05); }
+        .drop-zone { border: 2px dashed rgba(0,212,255,0.2); transition: all 0.3s; }
+        .drop-zone.drag-over { border-color: #00d4ff; background: rgba(0,212,255,0.05); }
+        .btn-primary { background: linear-gradient(135deg, #00d4ff, #0099cc); color: #000; font-weight: bold; cursor: pointer; }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-center p-4">
+    <div class="max-w-xl w-full">
+        <!-- Connection Status Badge -->
+        <div class="flex justify-center mb-6">
+            <div id="connection-status" class="px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-red-500/10 text-red-400 border border-red-500/20">
+                <i class="fa-solid fa-circle-xmark mr-1"></i> Server Offline
+            </div>
+        </div>
+
+        <div class="text-center mb-12">
+            <h1 class="text-6xl font-black mb-4"><span class="text-gradient">Pristine</span></h1>
+            <p class="text-slate-400">Local AI Watermark Removal</p>
+        </div>
+
+        <div id="drop-zone" class="glass rounded-3xl p-12 text-center drop-zone mb-8 cursor-pointer" onclick="document.getElementById('file-input').click()">
+            <input type="file" id="file-input" class="hidden" accept="image/*">
+            <div class="w-16 h-16 rounded-2xl bg-cyan-500/10 flex items-center justify-center mx-auto mb-4">
+                <i class="fa-solid fa-upload text-2xl text-cyan-400"></i>
+            </div>
+            <p class="text-xl font-bold text-white">Drop image here</p>
+            <p class="text-slate-500 text-sm mt-1">or click to browse</p>
+        </div>
+
+        <div id="status-bar" class="hidden glass rounded-2xl p-4 mb-8">
+            <div class="flex justify-between text-xs mb-2">
+                <span id="status-text">Processing...</span>
+                <span id="status-pct">0%</span>
+            </div>
+            <div class="h-1 bg-white/10 rounded-full overflow-hidden">
+                <div id="status-progress" class="h-full bg-cyan-500 w-0 transition-all"></div>
+            </div>
+        </div>
+
+        <div id="results-section" class="hidden">
+            <div class="glass rounded-2xl overflow-hidden mb-4">
+                <img id="output-image" class="w-full">
+            </div>
+            <a id="download-btn" class="btn-primary block text-center py-4 rounded-xl">
+                <i class="fa-solid fa-download mr-2"></i>Download
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const fileInput = document.getElementById('file-input');
+        const dropZone = document.getElementById('drop-zone');
+        const statusBar = document.getElementById('status-bar');
+        const resultsSection = document.getElementById('results-section');
+        const statusBadge = document.getElementById('connection-status');
+
+        // Check if server is reachable
+        async function checkServer() {
+            try {
+                // Try fetching from the same origin first
+                const resp = await fetch('/api/health').catch(() => fetch(window.location.origin + '/api/health'));
+                if (resp.ok) {
+                    statusBadge.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i> Server Online';
+                    statusBadge.className = 'px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+                    return true;
+                }
+            } catch (e) {}
+            
+            // If we are opening the file directly, suggest the URL
+            if (window.location.protocol === 'file:') {
+                statusBadge.innerHTML = '<i class="fa-solid fa-triangle-exclamation mr-1"></i> Open http://localhost:8080';
+            }
+            return false;
+        }
+        
+        setInterval(checkServer, 3000);
+        checkServer();
+
+        async function handleFile(file) {
+            if (!file) return;
+            
+            if (window.location.protocol === 'file:') {
+                alert('CRITICAL: You must open the app via http://localhost:8080 (not by opening the file directly).');
+                return;
+            }
+
+            statusBar.classList.remove('hidden');
+            resultsSection.classList.add('hidden');
+            document.getElementById('status-text').textContent = 'Uploading and processing...';
+            document.getElementById('status-progress').style.width = '50%';
+            
+            const formData = new FormData();
+            formData.append('image', file);
+
+            try {
+                const response = await fetch('/api/clean', { method: 'POST', body: formData });
+                if (!response.ok) throw new Error('Processing failed');
+                
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                document.getElementById('output-image').src = url;
+                document.getElementById('download-btn').href = url;
+                document.getElementById('download-btn').download = file.name.replace(/\.[^.]+$/, '') + '_clean.png';
+                resultsSection.classList.remove('hidden');
+                document.getElementById('status-text').textContent = 'Done!';
+                document.getElementById('status-progress').style.width = '100%';
+            } catch (e) {
+                document.getElementById('status-text').textContent = 'Error: ' + e.message;
+                document.getElementById('status-progress').style.width = '0%';
+                console.error('Fetch error:', e);
+            }
+        }
+
+        fileInput.onchange = () => handleFile(fileInput.files[0]);
+        dropZone.ondragover = (e) => { e.preventDefault(); dropZone.classList.add('drag-over'); };
+        dropZone.ondragleave = () => dropZone.classList.remove('drag-over');
+        dropZone.ondrop = (e) => { e.preventDefault(); dropZone.classList.remove('drag-over'); handleFile(e.dataTransfer.files[0]); };
+    </script>
+</body>
+</html>
