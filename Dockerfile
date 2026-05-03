@@ -1,6 +1,13 @@
 # Use Node.js LTS
 FROM node:20-slim
 
+# Install build dependencies for sharp
+RUN apt-get update && apt-get install -y \
+    python3 \
+    make \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
 # Set working directory
 WORKDIR /app
 
