@@ -316,11 +316,18 @@
 
   /* Scroll fade-in animation */
   .reveal {
-    opacity: 0;
-    transform: translateY(30px);
-    transition: opacity 0.7s ease, transform 0.7s ease;
+    opacity: 1; /* Always visible by default */
+    transform: none;
+    transition: opacity 0.7s cubic-bezier(0.2, 0.8, 0.2, 1), transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .reveal.visible { opacity: 1; transform: translateY(0); }
+
+  /* Pulse animation for hero icon */
+  @keyframes icon-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0.4); }
+    70% { box-shadow: 0 0 0 20px rgba(0, 212, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 212, 255, 0); }
+  }
+  .pulse-cyan { animation: icon-pulse 2s infinite; }
 
   /* Mobile menu */
   #mobile-menu {
@@ -444,24 +451,24 @@
 
   <div class="max-w-4xl mx-auto text-center relative z-10">
     <!-- Eyebrow -->
-    <div class="inline-flex items-center gap-2 glass rounded-full px-4 py-1.5 mb-8 reveal">
+    <div class="reveal visible">
       <span class="w-2 h-2 rounded-full bg-cyan-400 animate-pulse"></span>
       <span class="text-xs font-display font-600 text-cyan-400 tracking-widest uppercase">Browser-native · Zero uploads · Instant</span>
     </div>
 
     <!-- Title -->
-    <h1 class="font-display font-800 leading-[1.05] mb-6 reveal" style="animation-delay:0.1s; font-size: clamp(2.8rem, 7vw, 5rem);">
+    <h1 class="reveal visible" style="animation-delay:0.1s; font-size: clamp(2.8rem, 7vw, 5rem);">
       Remove Gemini Watermarks<br/>
       <span class="text-gradient">Instantly.</span>
     </h1>
 
     <!-- Subtitle -->
-    <p class="text-slate-400 text-lg md:text-xl leading-relaxed max-w-2xl mx-auto mb-10 reveal" style="animation-delay:0.2s;">
+    <p class="reveal visible" style="animation-delay:0.2s;">
       Pure browser-based local processing — <span class="text-slate-300">zero data leaves your device.</span> Fast, flawless, and completely free.
     </p>
 
     <!-- Badges -->
-    <div class="flex flex-wrap justify-center gap-3 mb-14 reveal" style="animation-delay:0.3s;">
+    <div class="reveal visible" style="animation-delay:0.3s;">
       <span class="badge text-cyan-400 border-cyan-500/30 bg-cyan-500/5 hover:bg-cyan-500/10">
         <i class="fa-solid fa-check mr-1.5"></i>Free Tool
       </span>
@@ -479,7 +486,7 @@
     <!-- Drop Zone -->
     <div
       id="drop-zone"
-      class="drop-zone rounded-2xl p-12 md:p-16 cursor-pointer relative reveal"
+      class="reveal visible"
       style="animation-delay:0.4s; background: rgba(0,212,255,0.02);"
     >
       <!-- Corner decorations -->
@@ -489,7 +496,7 @@
       <span class="absolute bottom-3 right-3 w-4 h-4 border-b-2 border-r-2 border-cyan-500/40 rounded-br"></span>
 
       <div class="flex flex-col items-center gap-5">
-        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/10 border border-cyan-500/20 flex items-center justify-center glow-cyan transition-all duration-300" id="drop-icon">
+        <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-cyan-500/20 to-blue-600/10 border border-cyan-500/20 flex items-center justify-center glow-cyan pulse-cyan transition-all duration-300" id="drop-icon">
           <i class="fa-solid fa-cloud-arrow-up text-3xl text-cyan-400"></i>
         </div>
         <div class="text-center">
@@ -521,7 +528,7 @@
     </div>
 
     <!-- Settings / Adjustments (NEW) -->
-    <div id="settings-card" class="hidden mt-6 glass rounded-2xl p-6 reveal text-left">
+    <div id="settings-card" class="reveal visible">
       <div class="flex flex-col md:flex-row items-center justify-between gap-6">
         <div class="flex-1">
           <h3 class="font-display font-700 text-white text-lg mb-1 flex items-center gap-2">
@@ -571,13 +578,13 @@
   <div class="orb w-72 h-72 bg-yellow-400/5 top-12 right-1/4 z-0"></div>
 
   <div class="max-w-5xl mx-auto relative z-10">
-    <div class="text-center mb-14 reveal">
+    <div class="reveal visible">
       <p class="text-xs font-display font-600 tracking-widest uppercase text-cyan-400 mb-3">Real Results</p>
       <h2 class="font-display font-800 text-4xl md:text-5xl text-white mb-4">See the <span class="text-gradient">Magic</span></h2>
       <p class="text-slate-400 max-w-xl mx-auto">Left: Original Gemini output with watermark. Right: Pixel-perfect watermark restoration.</p>
     </div>
 
-    <div class="reveal" style="animation-delay:0.2s;">
+    <div class="reveal visible" style="animation-delay:0.2s;">
       <div id="comparison" class="comparison-container glass" style="height: 440px; max-width: 800px; margin: 0 auto;">
 
         <!-- BEFORE image (base layer — watermarked) -->
@@ -679,7 +686,7 @@
   <div class="orb w-80 h-80 bg-cyan-500/8 bottom-20 -left-20 z-0"></div>
 
   <div class="max-w-6xl mx-auto relative z-10">
-    <div class="text-center mb-16 reveal">
+    <div class="reveal visible">
       <p class="text-xs font-display font-600 tracking-widest uppercase text-yellow-400 mb-3">Capabilities</p>
       <h2 class="font-display font-800 text-4xl md:text-5xl text-white mb-4">Why <span class="text-gradient">Pristine?</span></h2>
       <p class="text-slate-400 max-w-lg mx-auto">Built for people who demand privacy, precision, and performance — without compromise.</p>
@@ -688,7 +695,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
 
       <!-- Card 1 -->
-      <div class="feature-card rounded-2xl p-7 reveal hover-lift" style="animation-delay:0.1s;">
+      <div class="reveal visible" style="animation-delay:0.1s;">
         <div class="icon-wrap bg-cyan-500/10 border border-cyan-500/20 mb-5 text-cyan-400">
           <i class="fa-solid fa-shield-halved"></i>
         </div>
@@ -700,7 +707,7 @@
       </div>
 
       <!-- Card 2 -->
-      <div class="feature-card rounded-2xl p-7 reveal hover-lift" style="animation-delay:0.15s;">
+      <div class="reveal visible" style="animation-delay:0.15s;">
         <div class="icon-wrap bg-emerald-500/10 border border-emerald-500/20 mb-5 text-emerald-400">
           <i class="fa-brands fa-github"></i>
         </div>
@@ -712,7 +719,7 @@
       </div>
 
       <!-- Card 3 -->
-      <div class="feature-card rounded-2xl p-7 reveal hover-lift" style="animation-delay:0.2s;">
+      <div class="reveal visible" style="animation-delay:0.2s;">
         <div class="icon-wrap bg-violet-500/10 border border-violet-500/20 mb-5 text-violet-400">
           <i class="fa-solid fa-image"></i>
         </div>
@@ -724,7 +731,7 @@
       </div>
 
       <!-- Card 4 -->
-      <div class="feature-card rounded-2xl p-7 reveal hover-lift" style="animation-delay:0.25s;">
+      <div class="reveal visible" style="animation-delay:0.25s;">
         <div class="icon-wrap bg-yellow-500/10 border border-yellow-500/20 mb-5 text-yellow-400">
           <i class="fa-solid fa-bolt"></i>
         </div>
@@ -736,7 +743,7 @@
       </div>
 
       <!-- Card 5 -->
-      <div class="feature-card rounded-2xl p-7 reveal hover-lift" style="animation-delay:0.3s;">
+      <div class="reveal visible" style="animation-delay:0.3s;">
         <div class="icon-wrap bg-rose-500/10 border border-rose-500/20 mb-5 text-rose-400">
           <i class="fa-solid fa-heart"></i>
         </div>
@@ -748,7 +755,7 @@
       </div>
 
       <!-- Card 6 -->
-      <div class="feature-card rounded-2xl p-7 reveal hover-lift" style="animation-delay:0.35s;">
+      <div class="reveal visible" style="animation-delay:0.35s;">
         <div class="icon-wrap bg-sky-500/10 border border-sky-500/20 mb-5 text-sky-400">
           <i class="fa-solid fa-globe"></i>
         </div>
@@ -770,13 +777,13 @@
   <div class="orb w-96 h-96 bg-violet-600/6 top-0 right-0 z-0"></div>
 
   <div class="max-w-5xl mx-auto relative z-10">
-    <div class="text-center mb-16 reveal">
+    <div class="reveal visible">
       <p class="text-xs font-display font-600 tracking-widest uppercase text-violet-400 mb-3">Workflow</p>
       <h2 class="font-display font-800 text-4xl md:text-5xl text-white mb-4">3 Steps to <span class="text-gradient">Clean Images</span></h2>
     </div>
 
     <!-- Steps — Desktop horizontal, mobile vertical -->
-    <div class="flex flex-col md:flex-row items-start gap-0 reveal" style="animation-delay:0.2s;">
+    <div class="reveal visible" style="animation-delay:0.2s;">
 
       <!-- Step 01 -->
       <div class="flex flex-col items-center text-center md:flex-1 relative">
@@ -821,7 +828,7 @@
     </div>
 
     <!-- CTA below steps -->
-    <div class="text-center mt-14 reveal" style="animation-delay:0.3s;">
+    <div class="reveal visible" style="animation-delay:0.3s;">
       <button onclick="document.getElementById('drop-zone').scrollIntoView({behavior:'smooth'})" class="btn-primary px-10 py-4 rounded-xl text-base inline-flex items-center gap-3">
         <i class="fa-solid fa-wand-magic-sparkles"></i>
         Start Removing Watermarks — It's Free
@@ -838,13 +845,13 @@
   <div class="orb w-72 h-72 bg-cyan-500/6 top-10 left-1/4 z-0"></div>
 
   <div class="max-w-3xl mx-auto relative z-10">
-    <div class="text-center mb-14 reveal">
+    <div class="reveal visible">
       <p class="text-xs font-display font-600 tracking-widest uppercase text-cyan-400 mb-3">FAQ</p>
       <h2 class="font-display font-800 text-4xl md:text-5xl text-white mb-4">Got <span class="text-gradient">Questions?</span></h2>
       <p class="text-slate-400">Everything you need to know about Pristine.</p>
     </div>
 
-    <div class="glass rounded-2xl overflow-hidden reveal" style="animation-delay:0.15s;">
+    <div class="reveal visible" style="animation-delay:0.15s;">
 
       <!-- FAQ Item 1 -->
       <div class="faq-item">
@@ -949,7 +956,7 @@
   <div class="max-w-6xl mx-auto relative z-10">
 
     <!-- Top banner -->
-    <div class="glass rounded-2xl p-8 md:p-10 text-center mb-16 glow-cyan reveal" style="animation-delay:0s; background: rgba(0,212,255,0.03);">
+    <div class="reveal visible" style="animation-delay:0s; background: rgba(0,212,255,0.03);">
       <div class="flex items-center justify-center gap-3 mb-3">
         <i class="fa-solid fa-lock text-cyan-400 text-xl"></i>
         <h3 class="font-display font-800 text-2xl md:text-3xl text-white">Enterprise-Grade Privacy.</h3>
@@ -1246,7 +1253,8 @@ function removeWatermark(imageData, alphaOverride = 0.48) {
   }
 
   const finalX = bestX, finalY = bestY;
-\n  if (finalX < 0 || finalY < 0) return { imageData, applied: false, reason: 'Image too small for watermark region' };
+
+  if (finalX < 0 || finalY < 0) return { imageData, applied: false, reason: 'Image too small for watermark region' };
 
   // Get alpha map
   const alphaMap = getWatermarkAlpha(wmSize);
@@ -1309,7 +1317,10 @@ async function processFile(file) {
   formData.append('image', file);
   try {
     const response = await fetch('/api/clean', { method: 'POST', body: formData });
-    if (!response.ok) throw new Error('API processing failed');
+    if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
+        throw new Error(errJson.error || 'API processing failed');
+    }
     const blob = await response.blob();
     const url = URL.createObjectURL(blob);
     const img = new Image();
@@ -1322,6 +1333,7 @@ async function processFile(file) {
         ctx.drawImage(img, 0, 0);
         resolve({ canvas, name: file.name, applied: true, reason: 'Cleaned by Pristine Engine' });
       };
+      img.onerror = () => resolve({ canvas: null, name: file.name, applied: false, reason: 'Image load failed' });
       img.src = url;
     });
   } catch (e) {
@@ -1491,34 +1503,41 @@ function downloadAll(results) {
         </div>`;
       resultsGrid.appendChild(card);
 
-      const result = await processFile(file);
-      result.card = card; // Attach card reference
-      allResults.push(result);
-      processed++;
-      if (result.applied) removed++;
+      try {
+        const result = await processFile(file);
+        result.card = card; // Attach card reference
+        allResults.push(result);
+        processed++;
+        if (result.applied) removed++;
 
-      // Update card with real result
-      card.classList.remove('processing');
-      if (result.canvas) {
-        const thumb = result.canvas.toDataURL('image/jpeg', 0.85);
+        // Update card with real result
+        card.classList.remove('processing');
+        if (result.canvas) {
+          const thumb = result.canvas.toDataURL('image/jpeg', 0.85);
+          card.innerHTML = `
+            <img src="${thumb}" alt="${result.name}" loading="lazy"/>
+            <div class="card-body">
+              <span class="card-name">${result.name}</span>
+              <span class="card-badge ${result.applied ? 'badge-ok' : 'badge-skip'}">${result.applied ? '✓ Cleaned' : '⚠ No WM'}</span>
+              <button class="dl-btn" onclick="window.downloadCanvas(this._canvas,'${result.name}')">
+                <i class="fa-solid fa-download"></i>
+              </button>
+            </div>`;
+          // Attach canvas reference directly to button
+          card.querySelector('.dl-btn')._canvas = result.canvas;
+        } else {
+          throw new Error(result.reason || 'Failed to process');
+        }
+      } catch (err) {
+        console.error(err);
+        card.classList.remove('processing');
         card.innerHTML = `
-          <img src="${thumb}" alt="${result.name}" loading="lazy"/>
-          <div class="card-body">
-            <span class="card-name">${result.name}</span>
-            <span class="card-badge ${result.applied ? 'badge-ok' : 'badge-skip'}">${result.applied ? '✓ Cleaned' : '⚠ No WM'}</span>
-            <button class="dl-btn" onclick="window.downloadCanvas(this._canvas,'${result.name}')">
-              <i class="fa-solid fa-download"></i>
-            </button>
-          </div>`;
-        // Attach canvas reference directly to button
-        card.querySelector('.dl-btn')._canvas = result.canvas;
-      } else {
-        card.innerHTML = `
-          <div style="width:100%;aspect-ratio:16/10;background:rgba(239,68,68,0.05);display:flex;align-items:center;justify-content:center;">
+          <div style="width:100%;aspect-ratio:16/10;background:rgba(239,68,68,0.05);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
             <i class="fa-solid fa-triangle-exclamation text-red-400 text-2xl"></i>
+            <span class="text-[10px] text-red-400 font-display uppercase tracking-wider">Error</span>
           </div>
           <div class="card-body">
-            <span class="card-name">${result.name}</span>
+            <span class="card-name">${file.name}</span>
             <span class="card-badge badge-skip">Failed</span>
           </div>`;
       }
@@ -1614,19 +1633,8 @@ function toggleFaq(btn) {
   }
 }
 
-// ─── SCROLL REVEAL ──────────────────────────────────────────
-(function() {
-  const els = document.querySelectorAll('.reveal');
-  const obs = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        entry.target.classList.add('visible');
-        obs.unobserve(entry.target);
-      }
-    });
-  }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
-  els.forEach(el => obs.observe(el));
-})();
+// ─── SCROLL REVEAL (DISABLED FOR COMPATIBILITY) ─────────────
+/* Removed to ensure all content is visible on all devices */
 
 // ─── FEATURE CARD MOUSE GLOW ────────────────────────────────
 document.querySelectorAll('.feature-card').forEach(card => {
