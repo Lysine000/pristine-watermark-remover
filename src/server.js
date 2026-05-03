@@ -1,6 +1,6 @@
 import express from 'express';
 import multer from 'multer';
-import Jimp from 'jimp';
+import sharp from 'sharp';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -23,39 +23,55 @@ const upload = multer({
 });
 
 /**
- * Helper to decode image buffer using Jimp
+ * Helper to decode image buffer using Sharp
  */
 const decodeImageData = async (buffer) => {
-  const image = await Jimp.read(buffer);
+  const { data, info } = await sharp(buffer)
+    .ensureAlpha()
+    .raw()
+    .toBuffer({ resolveWithObject: true });
+  
   return { 
-    width: image.bitmap.width, 
-    height: image.bitmap.height, 
-    data: new Uint8ClampedArray(image.bitmap.data) 
+    width: info.width, 
+    height: info.height, 
+    data: new Uint8ClampedArray(data) 
   };
 };
 
 /**
- * Helper to encode image data back to buffer using Jimp
+ * Helper to encode image data back to buffer using Sharp
  */
-const encodeImageData = async (imageData) => {
-  const image = new Jimp({
-    width: imageData.width,
-    height: imageData.height,
-    data: Buffer.from(imageData.data)
+const encodeImageData = async (imageData, context = {}) => {
+  const { width, height, data } = imageData;
+  const format = context.mimeType === 'image/jpeg' ? 'jpeg' : 
+                 (context.mimeType === 'image/webp' ? 'webp' : 'png');
+  
+  let pipeline = sharp(Buffer.from(data), {
+    raw: { width, height, channels: 4 }
   });
-  return await image.getBufferAsync(Jimp.MIME_PNG);
+
+  if (format === 'jpeg') {
+    pipeline = pipeline.jpeg({ quality: 95 });
+  } else if (format === 'webp') {
+    pipeline = pipeline.webp({ quality: 95 });
+  } else {
+    pipeline = pipeline.png();
+  }
+
+  return await pipeline.toBuffer();
 };
 
 // API Routes
 app.get('/health', (req, res) => res.status(200).send('OK'));
 
 app.post('/api/clean', upload.single('image'), async (req, res) => {
+  const startTime = Date.now();
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No image uploaded' });
     }
 
-    console.log(`Processing image: ${req.file.originalname} (${req.file.size} bytes)`);
+    console.log(`[${new Date().toISOString()}] Processing: ${req.file.originalname} (${(req.file.size / 1024).toFixed(1)} KB)`);
 
     const result = await removeWatermarkFromBuffer(req.file.buffer, {
       mimeType: req.file.mimetype,
@@ -63,11 +79,14 @@ app.post('/api/clean', upload.single('image'), async (req, res) => {
       encodeImageData
     });
 
-    res.set('Content-Type', 'image/png');
+    const duration = Date.now() - startTime;
+    console.log(`[${new Date().toISOString()}] Completed in ${duration}ms`);
+
+    res.set('Content-Type', req.file.mimetype.startsWith('image/') ? req.file.mimetype : 'image/png');
     res.send(result.buffer);
   } catch (error) {
-    console.error('Processing error:', error);
-    res.status(500).json({ error: 'Failed to process image' });
+    console.error(`[${new Date().toISOString()}] Processing error:`, error);
+    res.status(500).json({ error: 'Failed to process image', details: error.message });
   }
 });
 
